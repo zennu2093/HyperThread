@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Shopping Bag - HyperThreadMy</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Header -->
+    <header class="navbar">
+        <div class="logo">HYPERTHREAD<span>MY</span></div>
+        <div class="user-actions">
+            <a href="index.html" class="back-shop-btn">← Continue Shopping</a>
+        </div>
+    </header>
+
+    <!-- Cart Items Page Container -->
+    <main class="cart-page-container">
+        <h2>Your Shopping Bag</h2>
+
+        <!-- Horizontal Shopping Items List -->
+        <div id="horizontal-cart-list" class="horizontal-cart-list">
+            <!-- JavaScript populates items horizontally here -->
+        </div>
+
+        <!-- Order Summary & Checkout -->
+        <div class="cart-summary-box">
+            <h3>Total Amount: $<span id="cart-page-total">0.00</span></h3>
+            <button onclick="checkout()" class="checkout-btn">PROCEED TO CHECKOUT</button>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 HyperThreadMy. All Rights Reserved.</p>
+    </footer>
+
+    <script src="script.js"></script>
+    <script>
+        // Page load hone par horizontally cart render karega
+        displayCartPageItems();
+    </script>
+</body>
+</html>

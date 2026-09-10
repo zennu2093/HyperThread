@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Category - HyperThreadMy</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <header class="navbar">
+        <div class="logo">HYPERTHREAD<span>MY</span></div>
+        <div class="user-actions">
+            <a href="index.html" class="back-shop-btn">← Back to Home</a>
+            <a href="cart.html" class="cart-btn">🛒 Cart (<span id="cart-count">0</span>)</a>
+        </div>
+    </header>
+
+    <main class="store-container">
+        <div class="section-header">
+            <h2 id="category-title">PRODUCTS</h2>
+        </div>
+
+        <!-- Products Yahan Yellow Grid Card Style Mein Display Honge -->
+        <div class="product-grid" id="category-product-list"></div>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 HyperThreadMy. All Rights Reserved.</p>
+    </footer>
+
+    <script src="script.js"></script>
+    <script>
+        // Automatic Category Filter Call
+        renderCategoryPage();
+    </script>
+</body>
+</html>
