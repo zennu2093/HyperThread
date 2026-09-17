@@ -1,0 +1,221 @@
+/*Template Code*/
+@media screen {
+	img,
+	.background-image-holder { image-rendering: auto; }
+}
+
+.title {
+	text-transform: uppercase;
+	font-size: 14px;
+	color: $color-primary;
+	border: $color-primary;
+	border-radius: 25px;
+	border: 1px solid $color-primary;
+	padding: 2px 12px;
+
+	&.title-white {
+		color: $white;
+		border: $white;
+		border: 1px solid $white;
+	}
+
+	@media screen and (max-width: $breakpoint-sm-max) {
+		font-size: 13px;
+	}
+}
+
+.ed-element.preset-menu-v2-default {
+	@include menu-v2(
+		$menu-wrapper-sticky: sticky_instant, 
+		$menu-wrapper-shadow: (2px 2px 12px 0 rgba(0,0,0,0.1), 2px, 4px), 
+		$hover-style: hover_box_fade, 
+		$menu-color: none, 
+		$menu-color-active: $color-primary, 
+		$hover-border-radius: (4px 4px 4px 4px, null, null), 
+		$menu-padding: (0.8rem 1rem 0.8rem 1rem, null, null), 
+		$menu-margin: (1rem, null, null), 
+		$menu-trigger-boxed: true, 
+		$extended-trigger-settings: true, 
+		$menu-trigger-padding: (0px, 10px, 10px), 
+		$menu-trigger-bar-height: (3px, 2px, 2px), 
+		$menu-trigger-width: (30px, 25px, null), 
+		$menu-trigger-bar-spacing: (8px, 7px, 7px), 
+		$menu-trigger-bar-radius: (0, null, null), 
+		$menu-trigger-border-radius: (0, 4px 4px 4px 4px, 4px 4px 4px 4px), 
+		$menu-trigger-boxed-color: $color-primary, 
+		$menu-wrapper-padding: (1.5rem 1.5rem 1.5rem 1.5rem, null, null), 
+		$menu-link-fw: 700, 
+		$menu-link-tt: none, 
+		$menu-link-font: link-special-font, 
+		$menu-link-fz: (20px, null, null)
+	);
+}
+
+.ed-element.preset-unequal-columns-v2-banner-columns {
+	@include unequal-columns-v2(
+		$box-width: (50%, 45%, 100%), 
+		$margin: (4rem, 3rem, null), 
+		$box-padding: (6rem 0rem 6rem 0rem, 5rem 0rem 5rem 0rem, 4rem 0rem 0rem 0rem)
+	);
+
+	.ed-text {
+		@media screen and (max-width: $breakpoint-sm-max) {
+			text-align: center;
+		}
+	}
+}
+
+.ed-element.preset-button-columns-v2-default {
+	@include button-columns-v2($margin: (1rem, null, null));
+}
+.ed-element.preset-boxes-v3-default {
+	@include boxes-v3(
+		$padding: (2rem 2rem 2rem 2rem, null, null), 
+		$border-radius-primary: (4px 4px 4px 4px, null, null), 
+		$box-background: #dff0ff, 
+		$fz-icon: (3rem, null, null), 
+		$icon-background: $color-secondary, 
+		$icon-padding: (1.2rem, null, null), 
+		$border-radius-secondary: (100% 100% 100% 100%, null, null), 
+		$icon-color: $color-background
+	);
+}
+.ed-element.preset-boxes-v3-icons-left {
+	@include boxes-v3(
+		$columns: (3, 1, 1), 
+		$grow: false, 
+		$margin: (2rem, null, null), 
+		$margin-horizontal: false, 
+		$icon-position: left_default, 
+		$flex-direction: (row, null, null), 
+		$box-background: $color-background, 
+		$padding: (1.5rem 1.5rem 1.5rem 1.5rem, null, null), 
+		$border-style-primary: solid, 
+		$border-width-primary: 0px, 
+		$border-color-primary: $color-primary, 
+		$border-radius-primary: (4px 4px 4px 4px, null, null), 
+		$box-shadow-primary: none, 
+		$icon-background: $color-secondary, 
+		$icon-color: $none, 
+		$fz-icon: (2.5rem, null, 2rem), 
+		$icon-padding: (1.5rem, null, null), 
+		$border-style-secondary: solid, 
+		$border-width-secondary: (0px 0px 0px 0px, null, null), 
+		$border-color-secondary: $color-secondary, 
+		$border-radius-secondary: (4px 0 0 4px, null, null), 
+		$box-shadow-secondary: none
+	);
+}
+.ed-element.preset-image-boxes-v3-default {
+	@include image-boxes-v3(
+		$box-border-radius: (4px 4px 4px 4px, null, null), 
+		$box-padding: (2rem, 1.2rem, 2rem), 
+		$box-background: $color-user-1, 
+		$columns: (3, null, 1), 
+		$margin: (2rem, null, null)
+	);
+}
+.ed-element.preset-info-bar-v3-projects {
+	@include info-bar-v3(
+		$background: $color-user-1, 
+		$padding: (0px 0px 0px 0px, null, null), 
+		$margin: (1rem, null, null), 
+		$color: $color-primary, 
+		$info-bar-font-size: (0.8rem, null, null), 
+		$icon-color: $color-primary, 
+		$icon-size: (0.8rem, null, null), 
+		$icon-margin: (0.2rem, null, null)
+	);
+}
+.ed-element.preset-overlay-v3-default {
+	@include overlay-v3($padding: (3rem, null, 1.5rem 1.5rem 1.5rem 1.5rem));
+}
+.ed-element.preset-gallery-v3-default {
+	@include gallery-v3($columns: (4, 5, 2), $border-radius-primary: (4px 4px 4px 4px, null, null));
+}
+.ed-element.preset-text-with-image-v4-about-us {
+	@include text-with-image-v4(
+		$border-radius-secondary: (4px 4px 4px 4px, null, null), 
+		$image-width: (35%, null, 100%), 
+		$margin: (4rem, null, null)
+	);
+}
+.ed-element.preset-counter-v2-default {
+	@include counter-v2(
+		$columns: (3, null, 1), 
+		$margin: (2rem, 1.5rem, null), 
+		$ff-counter: "Mulish", 
+		$fz-counter: (44px, null, 38px), 
+		$fz-caption: (15px, 14px, null), 
+		$ff-caption: "Mulish", 
+		$color-counter: $color-primary, 
+		$border-radius-primary: (4px 4px 4px 4px, null, 0px 0px 0px 0px), 
+		$box-background: $color-background, 
+		$box-padding: (2rem 2rem 2rem 2rem, 1rem 1rem 1rem 1rem, 1.5rem 1.5rem 1.5rem 1.5rem)
+	);
+}
+
+.ed-element.preset-slider-content-v3-default {
+	@include slider-content-v3(
+		$arrow-position: (outside, null, null), 
+		$arrow-space: (0rem, null, null), 
+		$margin: (1rem, null, 1rem), 
+		$border-radius-secondary: (4px 4px 4px 4px, null, null), 
+		$border-radius-primary: (4px 4px 4px 4px, null, null), 
+		$box-padding: (2rem, null, null), 
+		$dots-color-active: $color-secondary, 
+		$dots-space: (2rem, null, null), 
+		$extended-trigger-settings: true, 
+		$arrows-show-on-mobile: show, 
+		$background: $color-user-1, 
+		$arrow-size: (2.5rem, null, 2rem), 
+		$arrow-font-size: (1.25rem, null, 1.2rem)
+	);
+
+	// Preset fix
+	> .inner { width: 100% !important; }
+}
+
+.ed-element.preset-social-icons-v3-testimonials {
+	@include social-icons-v3(
+		$icon-background-active: none, 
+		$icon-background: none, 
+		$icon-color: #f4c705, 
+		$icon-padding: (0rem 0rem 0rem 0rem, null, null), 
+		$social-icon-size: (1.25rem, null, null), 
+		$margin: (0.2rem, null, null)
+	);
+}
+.ed-element.preset-contact-form-v3-row {
+	@include contact-form-v3(
+		$border-radius-primary: (4px 4px 4px 4px, null, null), 
+		$regenerate-color: $color-background, 
+		$border-style-primary: none
+	);
+}
+.ed-element.preset-text-with-image-v4-default {
+	@include text-with-image-v4($border-radius-secondary: (4px 4px 4px 4px, null, null), $margin: (4rem, null, null));
+}
+.ed-element.preset-footer-saga-v3-default {
+	@include footer-saga-v3(
+		$background: $color-default, 
+		$icon-color: $color-secondary, 
+		$columns: (3, null, 1), 
+		$margin: (4rem, 2rem, 3rem)
+	);
+}
+
+/*Custom Code*/
+.ed-element.preset-text-with-image-v4-boxed {
+	@include text-with-image-v4(
+		$background: #f3f3f3, 
+		$margin: (0rem, null, null), 
+		$margin-horizontal: false, 
+		$box-padding: (2.5rem 2.5rem 2.5rem 2.5rem, null, 1.5rem 1.5rem 1.5rem 1.5rem), 
+		$image-width: 50% null 100%
+	);
+}
+
+.ed-element.preset-menu-hamburger-default {
+	@include menu-hamburger();
+}

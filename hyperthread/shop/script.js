@@ -9,7 +9,7 @@ const products = [
         oldPrice: 400.00,
         discount: "-25%",
         category: "washing-machine",
-        image: "https://images.unsplash.com/photo-1610557892470-55d9e80c0bce?auto=format&fit=crop&w=500&q=80"
+        image: "images/wm1.jpg"
     },
     {
         id: 2,
@@ -18,7 +18,7 @@ const products = [
         oldPrice: 650.00,
         discount: "-23%",
         category: "fridge",
-        image: "https://images.unsplash.com/photo-1584992236310-6edddc08acff?auto=format&fit=crop&w=500&q=80"
+        image: "images/fridge1.jpg"
     },
     {
         id: 3,
@@ -27,7 +27,61 @@ const products = [
         oldPrice: 500.00,
         discount: "-20%",
         category: "aircon",
-        image: "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=500&q=80"
+        image: "images/ac1.jpg"
+    },
+    {
+        id: 4,
+        name: "Automatic Washing Machine",
+        price: 299.99,
+        oldPrice: 400.00,
+        discount: "-25%",
+        category: "washing-machine",
+        image: "images/wm2.jpg"
+    },
+    {
+        id: 5,
+        name: "Double Door Refrigerator",
+        price: 499.99,
+        oldPrice: 650.00,
+        discount: "-23%",
+        category: "fridge",
+        image: "images/fridge2.jpg"
+    },
+    {
+        id: 6,
+        name: "Inverter Air Conditioner",
+        price: 399.99,
+        oldPrice: 500.00,
+        discount: "-20%",
+        category: "aircon",
+        image: "images/ac2.jpg"
+    },
+    {
+        id: 7,
+        name: "Automatic Washing Machine",
+        price: 299.99,
+        oldPrice: 400.00,
+        discount: "-25%",
+        category: "washing-machine",
+        image: "images/wm3.jpg"
+    },
+    {
+        id: 8,
+        name: "Double Door Refrigerator",
+        price: 499.99,
+        oldPrice: 650.00,
+        discount: "-23%",
+        category: "fridge",
+        image: "images/fridge3.jpg"
+    },
+      {
+        id: 9,
+        name: "Inverter Air Conditioner",
+        price: 399.99,
+        oldPrice: 500.00,
+        discount: "-20%",
+        category: "aircon",
+        image: "images/ac3.jpg"
     }
 ];
 
@@ -166,11 +220,37 @@ function checkout() {
         return;
     }
 
-    alert("Order successfully placed with HyperThreadMy!");
+    // 1. Apna Whatsapp Number Yahan Likhein (Country Code Ke Saath, e.g., 92300xxxxxxx)
+    const phoneNumber = "60149319218"; // <-- Yahan Apna Number Daalein
+
+    // 2. Order Details Format Karein
+    let orderMessage = "🛍️ *NEW ORDER - HYPERTHREADMY*\n";
+    orderMessage += "-----------------------------------\n\n";
+
+    let total = 0;
+    cart.forEach((item, index) => {
+        total += item.price;
+        orderMessage += `${index + 1}. *${item.name}*\n   Price: $${item.price.toFixed(2)}\n\n`;
+    });
+
+    orderMessage += "-----------------------------------\n";
+    orderMessage += `💰 *Total Amount:* $${total.toFixed(2)}\n\n`;
+    orderMessage += "Please confirm your order and share payment details. Thank you!";
+
+    // 3. Message ko URL Encoding Mein Convert Karein
+    const encodedMessage = encodeURIComponent(orderMessage);
+
+    // 4. WhatsApp Direct Chat Link Banayein
+    const whatsappURL = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
+
+    // 5. Cart Clear Karein Aur WhatsApp Par Redirect Karein
     cart = [];
     localStorage.setItem('hyperthread_cart', JSON.stringify(cart));
     displayCartPageItems();
     updateCartCount();
+
+    // Nayi Tab Mein WhatsApp Open Karein
+    window.open(whatsappURL, '_blank');
 }
 
 // ==========================================

@@ -75,22 +75,63 @@ body {
     font-weight: bold;
 }
 
+/* Header Buttons Alignment (Cart & Website Buttons) */
+.user-actions {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+}
+
 .user-actions a {
     color: #ffffff;
     text-decoration: none;
-    margin-left: 15px;
     font-size: 0.9rem;
     font-weight: bold;
 }
 
+/* Cart Button Style */
 .user-actions .cart-btn {
-    background: #ffffff;
-    color: #0B192C;
-    padding: 6px 12px;
-    border-radius: 20px;
+    background: #FF6500 !important;
+    color: #ffffff !important;
+    padding: 8px 16px !important;
+    border-radius: 20px !important;
+    text-decoration: none !important;
+    font-weight: bold !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    white-space: nowrap !important;
+    transition: 0.3s ease !important;
 }
 
-/* Category Navigation (Shein Style) */
+.user-actions .cart-btn:hover {
+    background: #ffffff !important;
+    color: #0B192C !important;
+}
+
+/* Main Website Button Style */
+.user-actions .website-btn {
+    background: #ffffff !important;
+    color: #0B192C !important;
+    padding: 8px 16px !important;
+    border-radius: 20px !important;
+    text-decoration: none !important;
+    font-weight: bold !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    white-space: nowrap !important;
+    transition: 0.3s ease !important;
+    border: 1px solid #ffffff !important;
+}
+
+.user-actions .website-btn:hover {
+    background: #FF6500 !important;
+    color: #ffffff !important;
+    border-color: #FF6500 !important;
+}
+
+/* Category Navigation */
 .category-nav {
     background-color: #111111;
     display: flex;
@@ -121,7 +162,7 @@ body {
 .slider-container {
     position: relative;
     max-width: 100%;
-    height: 320px; /* Slider height yahan se adjust karein */
+    height: 320px;
     overflow: hidden;
     background-color: #0B192C;
 }
@@ -131,13 +172,12 @@ body {
     height: 100%;
 }
 
-/* Individual Slide setup */
 .slide {
     position: absolute;
     width: 100%;
     height: 100%;
     opacity: 0;
-    transition: opacity 0.8s ease-in-out; /* Smooth Fade Transition */
+    transition: opacity 0.8s ease-in-out;
 }
 
 .slide.active {
@@ -147,11 +187,10 @@ body {
 .slide img {
     width: 100%;
     height: 100%;
-    object-fit: cover; /* Image fit & proportion maintain rakhega */
-    filter: brightness(0.7); /* Text visible karne ke liye halki dark overlay */
+    object-fit: cover;
+    filter: brightness(0.7);
 }
 
-/* Text Banner Alignment */
 .hero-text {
     position: absolute;
     top: 50%;
@@ -163,7 +202,7 @@ body {
 }
 
 .hero-text h2 {
-    font-size: 2.2rem;
+    font-size: 2.5rem;
     font-weight: 900;
 }
 
@@ -171,20 +210,19 @@ body {
     color: #FF6500;
     font-size: 1.1rem;
     font-weight: bold;
-    margin: 8px 0;
+    margin: 10px 0;
 }
 
 .shop-now-btn {
     background-color: #FF6500;
     color: #ffffff;
     border: none;
-    padding: 10px 22px;
+    padding: 10px 25px;
     font-weight: bold;
     cursor: pointer;
-    font-size: 0.9rem;
+    font-size: 1rem;
 }
 
-/* Left & Right Buttons */
 .prev-btn, .next-btn {
     position: absolute;
     top: 50%;
@@ -206,7 +244,6 @@ body {
 .prev-btn { left: 15px; }
 .next-btn { right: 15px; }
 
-/* Dots Indicators */
 .dots-container {
     position: absolute;
     bottom: 12px;
@@ -227,31 +264,8 @@ body {
 
 .dot.active-dot {
     background-color: #FF6500;
-    width: 24px; /* Shein style pill shape active dot */
+    width: 24px;
     border-radius: 10px;
-}
-
-
-.hero-text h2 {
-    font-size: 2.5rem;
-    font-weight: 900;
-}
-
-.hero-text p {
-    font-size: 1.1rem;
-    margin: 10px 0;
-    color: #FF6500;
-    font-weight: bold;
-}
-
-.shop-now-btn {
-    background-color: #FF6500;
-    color: #ffffff;
-    border: none;
-    padding: 10px 25px;
-    font-weight: bold;
-    cursor: pointer;
-    font-size: 1rem;
 }
 
 /* Products Section */
@@ -283,7 +297,6 @@ body {
     border-radius: 4px;
 }
 
-/* Grid Layout */
 .product-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -359,64 +372,6 @@ body {
     background-color: #FF6500;
 }
 
-/* Cart Section */
-.cart-section {
-    max-width: 800px;
-    margin: 40px auto;
-    background: #ffffff;
-    padding: 20px;
-    border: 1px solid #0B192C;
-}
-
-.cart-item {
-    display: flex;
-    justify-content: space-between;
-    padding: 10px 0;
-    border-bottom: 1px solid #eee;
-}
-
-.checkout-btn {
-    width: 100%;
-    background: #FF6500;
-    color: #ffffff;
-    border: none;
-    padding: 12px;
-    font-size: 1rem;
-    font-weight: bold;
-    cursor: pointer;
-    margin-top: 15px;
-}
-
-footer {
-    background-color: #0B192C;
-    color: #ffffff;
-    text-align: center;
-    padding: 20px;
-    margin-top: 40px;
-}
-/* Top Right Cart Button Styling */
-.user-actions .cart-btn {
-    background: #FF6500;
-    color: #ffffff;
-    padding: 8px 16px;
-    border-radius: 20px;
-    text-decoration: none;
-    font-weight: bold;
-    display: inline-block;
-    transition: 0.3s ease;
-}
-
-.user-actions .cart-btn:hover {
-    background: #ffffff;
-    color: #0B192C;
-}
-
-.back-shop-btn {
-    color: #ffffff;
-    text-decoration: none;
-    font-weight: bold;
-}
-
 /* Horizontal Cart Page Layout */
 .cart-page-container {
     max-width: 1000px;
@@ -432,14 +387,12 @@ footer {
     margin-bottom: 20px;
 }
 
-/* HORIZONTAL CARDS CONTAINER */
 .horizontal-cart-list {
     display: flex;
     flex-direction: column;
     gap: 15px;
 }
 
-/* Individual Horizontal Cart Row Item */
 .horizontal-cart-item {
     display: flex;
     align-items: center;
@@ -499,4 +452,24 @@ footer {
 .cart-summary-box h3 {
     margin-bottom: 15px;
     color: #FF6500;
+}
+
+.checkout-btn {
+    width: 100%;
+    background: #FF6500;
+    color: #ffffff;
+    border: none;
+    padding: 12px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 15px;
+}
+
+footer {
+    background-color: #0B192C;
+    color: #ffffff;
+    text-align: center;
+    padding: 20px;
+    margin-top: 40px;
 }

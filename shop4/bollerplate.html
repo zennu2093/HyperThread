@@ -1,0 +1,4170 @@
+// Calculate brightness of a given color.
+@function brightness($value) {
+  @if type-of($value) == 'color' {
+    // If the value is a color, perform the brightness calculation
+    @return ((red($value) * .299) + (green($value) * .587) + (blue($value) * .114)) / 255 * 100%;
+  } @else {
+    @return unquote("brightness(#{$value})");
+  }
+}
+
+// Compares contrast of a given color to a set of colors and returns whichever is most "contrasty"
+@function color-contrast($base-color, $colors...) {
+
+  // Backward compatibility
+  @if length($colors)==0 {
+    $colors: ($text-color, $color-background);
+  }
+
+  @if type-of($base-color) !="color"or $base-color==transparent {
+    @return nth($colors, 1);
+  }
+
+  $best-color: nth($colors, 1);
+  $best-color-brightness: brightness($best-color);
+  $base-color-brightness: brightness($base-color);
+  @each $color in $colors {
+    $color-brightness: brightness($color);
+    @if(abs($base-color-brightness - $color-brightness) > abs($base-color-brightness - $best-color-brightness)) {
+      $best-color: $color;
+      $best-color-brightness: $color-brightness;
+    }
+  }
+
+  @return $best-color;
+}
+
+@function suggest-color($mode, $comparator, $colors...) {
+
+  @if length($colors)==0 {
+    @return if($mode==lighten, lighten($comparator, 15%), darken($comparator, 15%));
+  }
+
+  $best-color: nth($colors, 1);
+  $best-color-brightness: brightness($best-color);
+  $base-color-brightness: brightness($comparator);
+
+  @each $color in $colors {
+    $color-brightness: brightness($color);
+
+    @if(abs($base-color-brightness - $color-brightness) > abs($base-color-brightness - $best-color-brightness)) {
+      $best-color: $color;
+      $best-color-brightness: $color-brightness;
+    }
+  }
+
+  @return $best-color;
+}
+
+// Check if contrast of a given color is high enough to display it, otherwise use color-contrast
+@function prioritize-color($color: $color-primary, $background: $color-background, $contrast: 20%) {
+  @if type-of($background) == color and abs(brightness($background) - brightness($color))>$contrast {
+    @return $color;
+  }
+
+  @else {
+    @return color-contrast($background, $text-color, $color-background, $color);
+  }
+}
+
+// Check all given colors and return first of correct type
+@function first-color($colors...) {
+  @each $color in $colors {
+    @if type-of($color)==color {
+      @return $color;
+    }
+  }
+}
+
+@function strip-units($number) {
+  @return $number / ($number * 0 + 1);
+}
+
+@function to-rem($value) {
+  $unit: unit($value);
+
+  @if $unit=="px" {
+    @return strip-units($value)/16+0rem;
+  }
+
+  @else if $unit=="%" {
+    @return (strip-units($value)/100) * to-rem($fz-base-default);
+  }
+
+  @else if $unit=="em" {
+    @return strip-units($value) * to-rem($fz-base-default);
+  }
+
+  @return $value;
+}
+
+@function preset-text-color($background) {
+  @return color-contrast($background, $text-color, $color-background);
+}
+
+@function preset-accent-color($background) {
+  @return prioritize-color(first-color($color-headlines, $color-primary), $background: $background);
+}
+
+@function get-color-headlines($background) {
+  @return prioritize-color($color: first-color($color-headlines, $color-primary), $background: $background);
+}
+
+@function get-color-h1($background) {
+  @return prioritize-color($color: first-color($color-h1, $color-headlines, $color-primary), $background: $background);
+}
+
+@function get-color-h2($background) {
+  @return prioritize-color($color: first-color($color-h2, $color-headlines, $color-primary), $background: $background);
+}
+
+@function get-color-h3($background) {
+  @return prioritize-color($color: first-color($color-h3, $color-headlines, $color-primary), $background: $background);
+}
+
+@function get-color-h4($background) {
+  @return prioritize-color($color: first-color($color-h4, $color-headlines, $color-primary), $background: $background);
+}
+
+@function get-color-h5($background) {
+  @return prioritize-color($color: first-color($color-h5, $color-headlines, $color-primary), $background: $background);
+}
+
+@function get-color-h6($background) {
+  @return prioritize-color($color: first-color($color-h6, $color-headlines, $color-primary), $background: $background);
+}
+
+// Always returns a list of downward compatible values
+@function inherit-list($list) {
+  $value: ();
+  $last-value: '';
+  $list-length: length($list);
+
+  // $list-length == 1: Create 3 values from one. e.g. $example: (5);
+  // $list-length >= 4: Create 3 values from one if it's a multi-dimensional/shadow list. e.g. $example: (5 5 5 5) or $example: (0 0 0 0 $black);
+  // $list-length == 3 and nth($list, 2) == null and nth($list, 3) == null: Create 3 values from three if it contains 2 null. e.g. $example: (5, null, null);
+  // $list-length == 2 and nth($list, 2) == null: Create 3 values from two if contains one null $example: (5, null);
+  @if $list-length == 1 or $list-length >= 4 or ($list-length == 3 and nth($list, 2) == null and nth($list, 3) == null) or ($list-length == 2 and nth($list, 2) == null) {
+    $value: (nth($list,1), nth($list,1), nth($list,1));
+  }
+
+  // $list-length == 2: Create 3 values from 2. e.g. $example: (5, 4);
+  @else if $list-length == 2{
+    $value: append($list, nth($list, 2));
+  }
+
+  // $list-length == 3 and nth($list, 3) == null: Create 3 values from three if last one is null. e.g. $example: (5, 4, null);
+  @else if $list-length == 3 and nth($list, 3) == null{
+    $value: set-nth($list, 3, nth($list, 2));
+  }
+
+  // $list-length == 3 and nth($list, 2) == null: Create 3 values from 2 if middle is null. e.g. $example: (5, null, 4);
+  @else if $list-length == 3 and nth($list, 2) == null{
+    $value: set-nth($list, 2, nth($list, 1));
+  }
+
+  //Return the already viable list
+  @else{
+    $value: $list;
+  }
+    @return $value;
+}
+
+
+// Extend the media constructor with content before and after
+// the variable. E.g. necessary for calculations and such.
+@function extend-constructor($startrule, $list, $endrule) {
+
+  // Create a viable list with 3 values
+  $list: inherit-list($list);
+  $value: ();
+
+  // Unquote the strings and stitch everything together
+  // as one entry in a list
+  @each $i in $list {
+    $value: append($value, unquote($startrule + $i + $endrule), comma);
+  }
+
+  @return $value;
+}
+
+// Returns the nth element in a list, but if the element is zero or null, it returns a default value
+@function nth-or-default($list, $n, $default) {
+  $value: nth($list, $n);
+  @if $value == null or $value == 0 {
+    @return $default;
+  }
+  @return $value;
+}
+// colors
+$none:                      none;
+$transparent:               transparent;
+$black:                     #000000 !default;
+$white:                     #ffffff !default;
+$green:                     #a3cc00 !default;
+$yellow:                    #D9BB0B !default;
+$red:                       #991E0F !default;
+$blue:                      #4e79a7 !default;
+
+// gray-scale
+$gray-darkest:              #1a1c1b !default;
+$gray-darker:               #3a3c3b !default;
+$gray-dark:                 #5a5c5b !default;
+$gray:                      #7a7c7b !default;
+$gray-light:                #9a9c9b !default;
+$gray-lighter:              #cacccb !default;
+$gray-lightest:             #f0f2f1 !default;
+
+
+// primary colors
+/* @Param(type="color", options={"useVariables"=false}) @Group("colors-scheme") */
+$color-background:          $white !default;
+/* @Param(type="color", options={"useVariables"=false}) @Group("colors-scheme") */
+$color-primary:             $blue !default;
+/* @Param(type="color", options={"useVariables"=false}) @Group("colors-scheme") */
+$color-secondary:           $gray-darker !default;
+/* @Param(type="color", options={"useVariables"=false}) @Group("colors-scheme") */
+$color-default:             $gray-dark !default;
+
+// user-defined colors
+/* @Param(type="color", options={"allowBlank"=true, "allowAlpha"=true, "useVariables"=false}) @Group("colors-customize") */
+$color-user-1:              none !default;
+/* @Param(type="color", options={"allowBlank"=true, "allowAlpha"=true, "useVariables"=false}) @Group("colors-customize") */
+$color-user-2:              none !default;
+/* @Param(type="color", options={"allowBlank"=true, "allowAlpha"=true, "useVariables"=false}) @Group("colors-customize") */
+$color-user-3:              none !default;
+/* @Param(type="color", options={"allowBlank"=true, "allowAlpha"=true, "useVariables"=false}) @Group("colors-customize") */
+$color-user-4:              none !default;
+/* @Param(type="color", options={"allowBlank"=true, "allowAlpha"=true, "useVariables"=false}) @Group("colors-customize") */
+$color-user-5:              none !default;
+
+$color-transparent:         rgba(0,0,0,.0);
+
+// named colors
+$color-error:               #bd2130 !default;
+$color-warning:             #d39e00 !default;
+$color-info:                #117a8b !default;
+$color-success:             #28a745 !default;
+
+// breakpoints
+$breakpoint-xs:             36rem !default;      // ~ 576px
+$breakpoint-sm:             48rem !default;      // ~ 768px
+$breakpoint-md:             61rem !default;      // ~ 976px
+$breakpoint-lg:             75rem !default;      // ~ 1200px
+$breakpoint-xl:             100rem !default;     // ~ 1600px
+/* @Param(type="number", options={"units"={"rem", "px"}}) @Group("spacer") */
+$content-width:             $breakpoint-md !default;
+
+$breakpoint-xs-max:         $breakpoint-xs - 1/16;
+$breakpoint-sm-max:         $breakpoint-sm - 1/16;
+$breakpoint-md-max:         $breakpoint-md - 1/16;
+$breakpoint-lg-max:         $breakpoint-lg - 1/16;
+
+// spacer
+/* @Param(type="number", options={"units"={"rem"} }) @Group("spacer") */
+$spacer:                    1rem !default;
+/* @Param(type="number", options={"units"={"rem"}, "responsive"=1 }) @Group("spacer") */
+$spacer-container-all:      (5rem, null, 4rem) !default;
+
+// padding
+$padding-vertical:          $spacer/2 !default;
+$padding-horizontal:        $spacer !default;
+
+$padding-vertical-sm:       $spacer/4 !default;
+$padding-vertical-lg:       $spacer/4 * 3 !default;
+
+$padding-horizontal-sm:     $spacer/2 !default;
+$padding-horizontal-lg:     $spacer/4 * 5 !default;
+
+// borders
+$border-width:              1px !default;
+$border-radius:             0.25rem !default;
+$border-radius-sm:          $spacer/5 !default;
+$border-radius-lg:          $spacer/2 !default;
+
+// features
+$feature-rounded:           false !default;
+$feature-transitions:       true !default;
+$feature-animations:        true !default;
+
+// transitions
+$transition-property:       all !default;
+/* @Param(type="number", options={"units"={"s"}}) @Group("features") */
+$transition-duration:       0.3s !default;
+/* @Param(type="choice", options={"choices"={"ease", "ease-in", "ease-out", "ease-in-out", "linear"}}) @Group("features") */
+$transition-timing:         ease-in-out !default;
+$transition-base:           all $transition-duration $transition-timing !default;
+$transition-fade:           opacity .15s linear !default;
+$transition-collapse:       height .35s ease !default;
+
+// cursor
+$cursor-disabled:           false !default;
+
+
+//
+// Typography
+//
+
+/* @Param(type="choice", options={"choices"={"Standard","Bold","Links"}, "expanded"=1}) @Group("fonts-text") */
+$text-choice:              Standard !default;
+/* @Param(type="color", visibility={"text-choice" : "Standard"}) @Color @Group("fonts-text") */
+$text-color:                $color-default !default;
+
+/* @Param(type="font", visibility={"text-choice" : "Standard"}) @Group("fonts-text") */
+$font-default:              -apple-system, BlinkMaxSystemFont, "Seoge UI", Roboto, "Helvetica Neue", Arial, sans-serif !default;
+$font-special:              $font-default !default;
+
+/* @Param(type="number", visibility={"text-choice" : "Standard"}, options={"units"={"rem","px"}, "responsive"=1}) @Group("fonts-text") */
+$fz-base-all:               (16px, null, null) !default;
+// Used as a base for to-rem calculations
+$fz-base-default:           16px !default;
+/* @Param(type="number", visibility={"text-choice" : "Standard"}, options={"step"=0.05, "decimals"=2, "min"=0.5, "responsive"=1}) @Group("fonts-text") */
+$lh-all:                    (1.5, null, null) !default;
+/* @Param(type="choice", visibility={"text-choice" : "Standard"}, options={"choices"={100,200,300,400,500,600,700,800,900}}) @Group("fonts-text") */
+$fw-base:                   400 !default;
+/* @Param(type="number", visibility={"text-choice" : "Standard"}, options={"units"={"rem","px"}, "min"=-1000, "step"=0.1, "responsive"=1}) @Group("fonts-text") */
+$ls-all:                    (0px, null, null) !default;
+/* @Param(type="choice", visibility={"text-choice" : "Standard"}, options={"choices"={"normal","italic"}, "expanded"=1}) @Group("fonts-text") */
+$fs-base:                   normal !default;
+/* @Param(type="choice", visibility={"text-choice" : "Standard"}, options={"choices"={"none","uppercase","lowercase"}, "expanded"=1}) @Group("fonts-text") */
+$tt-base:                   none !default;
+/* @Param(type="choice", visibility={"text-choice" : "Standard"}, options={"choices"={"inherit", "left", "center", "right", "justify"}, "expanded"=1}) @Group("fonts-text") */
+$ta-base:                   inherit !default;
+
+// shadows
+$text-shadow:               0 0 1px rgba($text-color, .7) !default;
+$box-shadow:                0 0 ($spacer/2) rgba($text-color, .7) !default;
+
+// Text - bold
+/* @Param(type="choice", visibility={"text-choice" : "Bold"}, options={"choices"={100,200,300,400,500,600,700,800,900}}) @Group("fonts-text") */
+$fw-bold:                   700 !default;
+
+// Text - links
+/* @Param(type="choice", visibility={"text-choice" : "Links"}, options={"choices"={"Default", "Hover / Active"}, "expanded"=1}) @Group("fonts-text") */
+$link-choice:               Default !default;
+/* @Param(type="color", visibility={"text-choice" : "Links", "link-choice" : "Default"}) @Color @Group("fonts-text") */
+$link-color:                $text-color !default;
+/* @Param(type="color", visibility={"text-choice" : "Links", "link-choice" : "Hover / Active"}) @Color @Group("fonts-text") */
+$link-hover-color:          $color-primary !default;
+/* @Param(type="choice", visibility={"text-choice" : "Links", "link-choice" : "Default"}, options={"choices"={"none", "underline"}, "expanded"=1}) @Group("fonts-text") */
+$link-decoration:           none !default;
+/* @Param(type="choice", visibility={"text-choice" : "Links", "link-choice" : "Hover / Active"}, options={"choices"={"none", "underline"}, "expanded"=1}) @Group("fonts-text") */
+$link-hover-decoration:     underline !default;
+
+$link-transition-property:       all !default;
+/* @Param(type="number", visibility={"text-choice" : "Links", "link-choice" : "Default"}, options={"units"={"s"}}) @Group("fonts-text") */
+$link-transition-duration:  $transition-duration !default;
+/* @Param(type="choice", visibility={"text-choice" : "Links", "link-choice" : "Default"}, options={"choices"={"ease", "ease-in", "ease-out", "ease-in-out", "linear"}}) @Group("fonts-text") */
+$link-transition-timing:    $transition-timing !default;
+$link-transition-base:      all $link-transition-duration $link-transition-timing !default;
+$link-transition-fade:      $transition-fade !default;
+$link-transition-collapse:  $transition-collapse !default;
+
+// Text - Headlines
+/* @Param(type="choice", options={"choices"={"All","H1","H2","H3","H4","H5","H6"}, "expanded"=1}) @Group("fonts-headlines") */
+$fc-headlines:              All !default;
+/* @Param(type="color", visibility={"fc-headlines" : "All"}) @Color @Group("fonts-headlines") */
+$color-headlines:           $color-primary !default;
+/* @Param(type="font", visibility={"fc-headlines" : "All"}) @Group("fonts-headlines") */
+$ff-headlines:              $font-special !default;
+/* @Param(type="number", visibility={"fc-headlines" : "All"}, options={"step"=0.05, "decimals"=2, "min"=0.5, "responsive"=1}) @Group("fonts-headlines") */
+$lh-headlines-all:          (1.5, null, null) !default;
+/* @Param(type="choice", visibility={"fc-headlines" : "All"}, options={"choices"={100,200,300,400,500,600,700,800,900}}) @Group("fonts-headlines") */
+$fw-headlines:              $fw-bold !default;
+/* @Param(type="number", visibility={"fc-headlines" : "All"}, options={"units"={"rem","px"}, "min"=-1000, "step"=0.1, "responsive"=1}) @Group("fonts-headlines") */
+$ls-headlines-all:          (0px, null, null) !default;
+/* @Param(type="choice", visibility={"fc-headlines" : "All"}, options={"choices"={"normal","italic"}, "expanded"=1}) @Group("fonts-headlines") */
+$fs-headlines:              normal !default;
+/* @Param(type="choice", visibility={"fc-headlines" : "All"}, options={"choices"={"none","uppercase","lowercase"}, "expanded"=1}) @Group("fonts-headlines") */
+$tt-headlines:              none !default;
+/* @Param(type="choice", visibility={"fc-headlines" : "All"}, options={"choices"={"none", "underline"}, "expanded"=1}) @Group("fonts-headlines") */
+$td-headlines:              none !default;
+/* @Param(type="choice", visibility={"fc-headlines" : "All"}, options={"choices"={"inherit", "left", "center", "right", "justify"}, "expanded"=1}) @Group("fonts-headlines") */
+$ta-headlines:              $ta-base !default;
+/* @Param(type="number", visibility={"fc-headlines" : "All"}, options={"units"={"rem","px","vh"}}) @Group("fonts-headlines") */
+$mb-headlines:              0 !default;
+
+/* @Param(type="color", visibility={"fc-headlines" : "H1"}) @Color @Group("fonts-headlines") */
+$color-h1:                  $color-headlines !default;
+/* @Param(type="font", visibility={"fc-headlines" : "H1"}, ) @Group("fonts-headlines") */
+$ff-h1:                     $ff-headlines !default;
+/* @Param(type="number", visibility={"fc-headlines" : "H1"}, options={"units"={"rem","px","em","%"}, "min"=0.1, "responsive"=1}) @Group("fonts-headlines") */
+$fz-h1-all:                 (40px, 34px, 28px) !default;
+/* @Param(type="number", visibility={"fc-headlines" : "H1"}, options={"step"=0.05, "decimals"=2, "min"=0.5, "responsive"=1}) @Group("fonts-headlines") */
+$lh-h1-all:                 $lh-headlines-all !default;
+/* @Param(type="choice", visibility={"fc-headlines" : "H1"}, options={"choices"={100,200,300,400,500,600,700,800,900}}) @Group("fonts-headlines") */
+$fw-h1:                     $fw-headlines !default;
+/* @Param(type="number", visibility={"fc-headlines" : "H1"}, options={"units"={"rem","px"}, "min"=-1000, "step"=0.1, "responsive"=1}) @Group("fonts-headlines") */
+$ls-h1-all:                 $ls-headlines-all !default;
+/* @Param(type="choice", visibility={"fc-headlines" : "H1"}, options={"choices"={"normal","italic"}, "expanded"=1}) @Group("fonts-headlines") */
+$fs-h1:                     $fs-headlines !default;
+/* @Param(type="choice", visibility={"fc-headlines" : "H1"}, options={"choices"={"none","uppercase","lowercase"}, "expanded"=1}) @Group("fonts-headlines") */
+$tt-h1:                     $tt-headlines !default;
+/* @Param(type="choice", visibility={"fc-headlines" : "H1"}, options={"choices"={"none", "underline"}, "expanded"=1}) @Group("fonts-headlines") */
+$td-h1:                     $td-headlines !default;
+/* @Param(type="choice", visibility={"fc-headlines" : "H1"}, options={"choices"={"inherit", "left", "center", "right", "justify"}, "expanded"=1}) @Group("fonts-headlines") */
+$ta-h1:                     $ta-headlines !default;
+/* @Param(type="number", visibility={"fc-headlines" : "H1"}, options={"units"={"rem","px","vh"}}) @Group("fonts-headlines") */
+$mb-h1:                     $mb-headlines !default;
+
+/* @Param(type="color", visibility={"fc-headlines" : "H2"}) @Color @Group("fonts-headlines") */
+$color-h2:                  $color-headlines !default;
+/* @Param(type="font", visibility={"fc-headlines" : "H2"}) @Group("fonts-headlines") */
+$ff-h2:                     $ff-headlines !default;
+/* @Param(type="number", visibility={"fc-headlines" : "H2"}, options={"units"={"rem","px","em","%"}, "min"=0.1, "responsive"=1}) @Group("fonts-headlines") */
+$fz-h2-all:                 (32px, 27px, 22px) !default;
+/* @Param(type="number", visibility={"fc-headlines" : "H2"}, options={"step"=0.05, "decimals"=2, "min"=0.5, "responsive"=1}) @Group("fonts-headlines") */
+$lh-h2-all:                 $lh-headlines-all !default;
+/* @Param(type="choice", visibility={"fc-headlines" : "H2"}, options={"choices"={100,200,300,400,500,600,700,800,900}}) @Group("fonts-headlines") */
+$fw-h2:                     $fw-headlines !default;
+/* @Param(type="number", visibility={"fc-headlines" : "H2"}, options={"units"={"rem","px"}, "min"=-1000, "step"=0.1, "responsive"=1}) @Group("fonts-headlines") */
+$ls-h2-all:                 $ls-headlines-all !default;
+/* @Param(type="choice", visibility={"fc-headlines" : "H2"}, options={"choices"={"normal","italic"}, "expanded"=1}) @Group("fonts-headlines") */
+$fs-h2:                     $fs-headlines !default;
+/* @Param(type="choice", visibility={"fc-headlines" : "H2"}, options={"choices"={"none","uppercase","lowercase"}, "expanded"=1}) @Group("fonts-headlines") */
+$tt-h2:                     $tt-headlines !default;
+/* @Param(type="choice", visibility={"fc-headlines" : "H2"}, options={"choices"={"none", "underline"}, "expanded"=1}) @Group("fonts-headlines") */
+$td-h2:                     $td-headlines !default;
+/* @Param(type="choice", visibility={"fc-headlines" : "H2"}, options={"choices"={"inherit", "left", "center", "right", "justify"}, "expanded"=1}) @Group("fonts-headlines") */
+$ta-h2:                     $ta-headlines !default;
+/* @Param(type="number", visibility={"fc-headlines" : "H2"}, options={"units"={"rem","px","vh"}}) @Group("fonts-headlines") */
+$mb-h2:                     $mb-headlines !default;
+
+/* @Param(type="color", visibility={"fc-headlines" : "H3"}) @Color @Group("fonts-headlines") */
+$color-h3:                  $color-headlines !default;
+/* @Param(type="font", visibility={"fc-headlines" : "H3"}) @Group("fonts-headlines") */
+$ff-h3:                     $ff-headlines !default;
+/* @Param(type="number", visibility={"fc-headlines" : "H3"}, options={"units"={"rem","px","em","%"}, "min"=0.1, "responsive"=1}) @Group("fonts-headlines") */
+$fz-h3-all:                 (28px, 24px, 20px) !default;
+/* @Param(type="number", visibility={"fc-headlines" : "H3"}, options={"step"=0.05, "decimals"=2, "min"=0.5, "responsive"=1}) @Group("fonts-headlines") */
+$lh-h3-all:                 $lh-headlines-all !default;
+/* @Param(type="choice", visibility={"fc-headlines" : "H3"}, options={"choices"={100,200,300,400,500,600,700,800,900}}) @Group("fonts-headlines") */
+$fw-h3:                     $fw-headlines !default;
+/* @Param(type="number", visibility={"fc-headlines" : "H3"}, options={"units"={"rem","px"}, "min"=-1000, "step"=0.1, "responsive"=1}) @Group("fonts-headlines") */
+$ls-h3-all:                 $ls-headlines-all !default;
+/* @Param(type="choice", visibility={"fc-headlines" : "H3"}, options={"choices"={"normal","italic"}, "expanded"=1}) @Group("fonts-headlines") */
+$fs-h3:                     $fs-headlines !default;
+/* @Param(type="choice", visibility={"fc-headlines" : "H3"}, options={"choices"={"none","uppercase","lowercase"}, "expanded"=1}) @Group("fonts-headlines") */
+$tt-h3:                     $tt-headlines !default;
+/* @Param(type="choice", visibility={"fc-headlines" : "H3"}, options={"choices"={"none", "underline"}, "expanded"=1}) @Group("fonts-headlines") */
+$td-h3:                     $td-headlines !default;
+/* @Param(type="choice", visibility={"fc-headlines" : "H3"}, options={"choices"={"inherit", "left", "center", "right", "justify"}, "expanded"=1}) @Group("fonts-headlines") */
+$ta-h3:                     $ta-headlines !default;
+/* @Param(type="number", visibility={"fc-headlines" : "H3"}, options={"units"={"rem","px","vh"}}) @Group("fonts-headlines") */
+$mb-h3:                     $mb-headlines !default;
+
+/* @Param(type="color", visibility={"fc-headlines" : "H4"}) @Color @Group("fonts-headlines") */
+$color-h4:                  $color-headlines !default;
+/* @Param(type="font", visibility={"fc-headlines" : "H4"}) @Group("fonts-headlines") */
+$ff-h4:                     $ff-headlines !default;
+/* @Param(type="number", visibility={"fc-headlines" : "H4"}, options={"units"={"rem","px","em","%"}, "min"=0.1, "responsive"=1}) @Group("fonts-headlines") */
+$fz-h4-all:                 (24px, 21px, 18px) !default;
+/* @Param(type="number", visibility={"fc-headlines" : "H4"}, options={"step"=0.05, "decimals"=2, "min"=0.5, "responsive"=1}) @Group("fonts-headlines") */
+$lh-h4-all:                 $lh-headlines-all !default;
+/* @Param(type="choice", visibility={"fc-headlines" : "H4"}, options={"choices"={100,200,300,400,500,600,700,800,900}}) @Group("fonts-headlines") */
+$fw-h4:                     $fw-headlines !default;
+/* @Param(type="number", visibility={"fc-headlines" : "H4"}, options={"units"={"rem","px"}, "min"=-1000, "step"=0.1, "responsive"=1}) @Group("fonts-headlines") */
+$ls-h4-all:                 $ls-headlines-all !default;
+/* @Param(type="choice", visibility={"fc-headlines" : "H4"}, options={"choices"={"normal","italic"}, "expanded"=1}) @Group("fonts-headlines") */
+$fs-h4:                     $fs-headlines !default;
+/* @Param(type="choice", visibility={"fc-headlines" : "H4"}, options={"choices"={"none","uppercase","lowercase"}, "expanded"=1}) @Group("fonts-headlines") */
+$tt-h4:                     $tt-headlines !default;
+/* @Param(type="choice", visibility={"fc-headlines" : "H4"}, options={"choices"={"none", "underline"}, "expanded"=1}) @Group("fonts-headlines") */
+$td-h4:                     $td-headlines !default;
+/* @Param(type="choice", visibility={"fc-headlines" : "H4"}, options={"choices"={"inherit", "left", "center", "right", "justify"}, "expanded"=1}) @Group("fonts-headlines") */
+$ta-h4:                     $ta-headlines !default;
+/* @Param(type="number", visibility={"fc-headlines" : "H4"}, options={"units"={"rem","px","vh"}}) @Group("fonts-headlines") */
+$mb-h4:                     $mb-headlines !default;
+
+/* @Param(type="color", visibility={"fc-headlines" : "H5"}) @Color @Group("fonts-headlines") */
+$color-h5:                  $color-headlines !default;
+/* @Param(type="font", visibility={"fc-headlines" : "H5"}) @Group("fonts-headlines") */
+$ff-h5:                     $ff-headlines !default;
+/* @Param(type="number", visibility={"fc-headlines" : "H5"}, options={"units"={"rem","px","em","%"}, "min"=0.1, "responsive"=1}) @Group("fonts-headlines") */
+$fz-h5-all:                 (20px, 17px, 14px) !default;
+/* @Param(type="number", visibility={"fc-headlines" : "H5"}, options={"step"=0.05, "decimals"=2, "min"=0.5, "responsive"=1}) @Group("fonts-headlines") */
+$lh-h5-all:                 $lh-headlines-all !default;
+/* @Param(type="choice", visibility={"fc-headlines" : "H5"}, options={"choices"={100,200,300,400,500,600,700,800,900}}) @Group("fonts-headlines") */
+$fw-h5:                     $fw-headlines !default;
+/* @Param(type="number", visibility={"fc-headlines" : "H5"}, options={"units"={"rem","px"}, "min"=-1000, "step"=0.1, "responsive"=1}) @Group("fonts-headlines") */
+$ls-h5-all:                 $ls-headlines-all !default;
+/* @Param(type="choice", visibility={"fc-headlines" : "H5"}, options={"choices"={"normal","italic"}, "expanded"=1}) @Group("fonts-headlines") */
+$fs-h5:                     $fs-headlines !default;
+/* @Param(type="choice", visibility={"fc-headlines" : "H5"}, options={"choices"={"none","uppercase","lowercase"}, "expanded"=1}) @Group("fonts-headlines") */
+$tt-h5:                     $tt-headlines !default;
+/* @Param(type="choice", visibility={"fc-headlines" : "H5"}, options={"choices"={"none", "underline"}, "expanded"=1}) @Group("fonts-headlines") */
+$td-h5:                     $td-headlines !default;
+/* @Param(type="choice", visibility={"fc-headlines" : "H5"}, options={"choices"={"inherit", "left", "center", "right", "justify"}, "expanded"=1}) @Group("fonts-headlines") */
+$ta-h5:                     $ta-headlines !default;
+/* @Param(type="number", visibility={"fc-headlines" : "H5"}, options={"units"={"rem","px","vh"}}) @Group("fonts-headlines") */
+$mb-h5:                     $mb-headlines !default;
+
+/* @Param(type="color", visibility={"fc-headlines" : "H6"}) @Color @Group("fonts-headlines") */
+$color-h6:                  $color-headlines !default;
+/* @Param(type="font", visibility={"fc-headlines" : "H6"}) @Group("fonts-headlines") */
+$ff-h6:                     $ff-headlines !default;
+/* @Param(type="number", visibility={"fc-headlines" : "H6"}, options={"units"={"rem","px","em","%"}, "min"=0.1, "responsive"=1}) @Group("fonts-headlines") */
+$fz-h6-all:                 (18px, 16px, 16px) !default;
+/* @Param(type="number", visibility={"fc-headlines" : "H6"}, options={"step"=0.05, "decimals"=2, "min"=0.5, "responsive"=1}) @Group("fonts-headlines") */
+$lh-h6-all:                 $lh-headlines-all !default;
+/* @Param(type="choice", visibility={"fc-headlines" : "H6"}, options={"choices"={100,200,300,400,500,600,700,800,900}}) @Group("fonts-headlines") */
+$fw-h6:                     $fw-headlines !default;
+/* @Param(type="number", visibility={"fc-headlines" : "H6"}, options={"units"={"rem","px"}, "min"=-1000, "step"=0.1, "responsive"=1}) @Group("fonts-headlines") */
+$ls-h6-all:                 $ls-headlines-all !default;
+/* @Param(type="choice", visibility={"fc-headlines" : "H6"}, options={"choices"={"normal","italic"}, "expanded"=1}) @Group("fonts-headlines") */
+$fs-h6:                     $fs-headlines !default;
+/* @Param(type="choice", visibility={"fc-headlines" : "H6"}, options={"choices"={"none","uppercase","lowercase"}, "expanded"=1}) @Group("fonts-headlines") */
+$tt-h6:                     $tt-headlines !default;
+/* @Param(type="choice", visibility={"fc-headlines" : "H6"}, options={"choices"={"none", "underline"}, "expanded"=1}) @Group("fonts-headlines") */
+$td-h6:                     $td-headlines !default;
+/* @Param(type="choice", visibility={"fc-headlines" : "H6"}, options={"choices"={"inherit", "left", "center", "right", "justify"}, "expanded"=1}) @Group("fonts-headlines") */
+$ta-h6:                     $ta-headlines !default;
+/* @Param(type="number", visibility={"fc-headlines" : "H6"}, options={"units"={"rem","px","vh"}}) @Group("fonts-headlines") */
+$mb-h6:                     $mb-headlines !default;
+
+// muted text
+$text-muted:                $gray !default;
+
+// tables
+$table-cell-padding:        .75rem !default;
+$table-sm-cell-padding:     .3rem !default;
+$table-bg:                  transparent !default;
+$table-bg-accent:           rgba($black,.05) !default;
+$table-bg-hover:            rgba($black,.075) !default;
+$table-bg-active:           $table-bg-hover !default;
+$table-border-width:        $border-width !default;
+$table-border-color:        $gray-lighter !default;
+$table-head-bg:             $gray-lighter !default;
+$table-head-color:          $gray !default;
+$table-inverse-bg:          $gray-dark !default;
+$table-inverse-bg-accent:   rgba($white, .05) !default;
+$table-inverse-bg-hover:    rgba($white, .075) !default;
+$table-inverse-bg-active:   $table-inverse-bg-hover !default;
+$table-inverse-border:      lighten($gray-dark, 7.5%) !default;
+$table-inverse-color:       $color-background !default;
+
+// logo attributes
+$logo-has-text:             false !default;
+$logo-transparent:          false !default;
+$logo-aspect-ratio:         2 !default;
+$logo-background:           false !default;
+$logo-luminance:            0 !default;
+$logo-asymmetry:            1 !default;
+
+
+// Buttons
+
+// Buttons -> Colors
+/* @Param(type="color", options={"allowBlank"=true, "allowTransparent"=true, "allowAlpha"=true, "width"=50}) @Group("default-buttons-color") */
+$button-background:         $color-primary !default;
+/* @Param(type="color", options={"allowBlank"=true, "allowTransparent"=true, "allowAlpha"=true, "width"=50}) @Group("default-buttons-color") */
+$button-background-active:  none !default;
+/* @Param(type="color", options={"allowBlank"=true, "allowTransparent"=true, "allowAlpha"=true, "width"=50}) @Group("default-buttons-color") */
+$button-color:              none !default;
+/* @Param(type="color", options={"allowBlank"=true, "allowTransparent"=true, "allowAlpha"=true, "width"=50}) @Group("default-buttons-color") */
+$button-color-active:       none !default;
+
+// Buttons -> Text
+/* @Param(type="choice", options={"choices"={"small","normal","large","extralarge"}, "expanded"=1}) @Group("default-buttons-text") */
+$bc-buttons:                normal !default;
+
+// Buttons -> Text -> Normal
+/* @Param(type="font", visibility={"bc-buttons" : "normal"}) @Group("default-buttons-text") */
+$ff-buttons:                $font-default !default;
+/* @Param(type="number", visibility={"bc-buttons" : "normal"}, options={"units"={"rem","px","em","%"}, "responsive"=1}) @Group("default-buttons-text") */
+$fz-buttons-all:            $fz-base-all !default;
+/* @Param(type="number", visibility={"bc-buttons" : "normal"}, options={"step"=0.05,"decimals"=2,"min"=0.5}) @Group("default-buttons-text") */
+$lh-buttons:                1.5 !default;
+/* @Param(type="number", visibility={"bc-buttons" : "normal"}, options={"units"={"rem","px"}, "min"=-1000, "step"=0.1}) @Group("default-buttons-text") */
+$ls-buttons:                0px !default;
+/* @Param(type="choice", visibility={"bc-buttons" : "normal"}, options={"choices"={100,200,300,400,500,600,700,800,900}}) @Group("default-buttons-text") */
+$fw-buttons:                $fw-base !default;
+/* @Param(type="choice", visibility={"bc-buttons" : "normal"}, options={"choices"={"none","uppercase","lowercase"}, "expanded"=1}) @Group("default-buttons-text") */
+$tt-buttons:                none !default;
+/* @Param(type="choice", visibility={"bc-buttons" : "normal"}, options={"choices"={"normal","italic"}, "expanded"=1}) @Group("default-buttons-text") */
+$fs-buttons:                normal !default;
+
+// Buttons -> Text -> Small
+/* @Param(type="font", visibility={"bc-buttons" : "small"}) @Group("default-buttons-text") */
+$ff-button-sm:              $ff-buttons !default;
+/* @Param(type="number", visibility={"bc-buttons" : "small"}, options={"units"={"rem","px","em","%"}, "responsive"=1}) @Group("default-buttons-text") */
+$fz-buttons-sm-all:         $fz-buttons-all !default;
+/* @Param(type="number", visibility={"bc-buttons" : "small"}, options={"step"=0.05,"decimals"=2,"min"=0.5}) @Group("default-buttons-text") */
+$lh-button-sm:              $lh-buttons !default;
+/* @Param(type="number", visibility={"bc-buttons" : "small"}, options={"units"={"rem","px"}, "min"=-1000, "step"=0.1}) @Group("default-buttons-text") */
+$ls-button-sm:              $ls-buttons !default;
+/* @Param(type="choice", visibility={"bc-buttons" : "small"}, options={"choices"={100,200,300,400,500,600,700,800,900}}) @Group("default-buttons-text") */
+$fw-button-sm:              $fw-buttons !default;
+/* @Param(type="choice", visibility={"bc-buttons" : "small"}, options={"choices"={"none","uppercase","lowercase"}, "expanded"=1}) @Group("default-buttons-text") */
+$tt-button-sm:              $tt-buttons !default;
+/* @Param(type="choice", visibility={"bc-buttons" : "small"}, options={"choices"={"normal","italic"}, "expanded"=1}) @Group("default-buttons-text") */
+$fs-button-sm:              $fs-buttons !default;
+
+// Buttons -> Text -> Large
+/* @Param(type="font", visibility={"bc-buttons" : "large"}) @Group("default-buttons-text") */
+$ff-button-lg:              $ff-buttons !default;
+/* @Param(type="number", visibility={"bc-buttons" : "large"}, options={"units"={"rem","px","em","%"}, "responsive"=1}) @Group("default-buttons-text") */
+$fz-buttons-lg-all:         $fz-buttons-all !default;
+/* @Param(type="number", visibility={"bc-buttons" : "large"}, options={"step"=0.05,"decimals"=2,"min"=0.5}) @Group("default-buttons-text") */
+$lh-button-lg:              $lh-buttons !default;
+/* @Param(type="number", visibility={"bc-buttons" : "large"}, options={"units"={"rem","px"}, "min"=-1000, "step"=0.1}) @Group("default-buttons-text") */
+$ls-button-lg:              $ls-buttons !default;
+/* @Param(type="choice", visibility={"bc-buttons" : "large"}, options={"choices"={100,200,300,400,500,600,700,800,900}}) @Group("default-buttons-text") */
+$fw-button-lg:              $fw-buttons !default;
+/* @Param(type="choice", visibility={"bc-buttons" : "large"}, options={"choices"={"none","uppercase","lowercase"}, "expanded"=1}) @Group("default-buttons-text") */
+$tt-button-lg:              $tt-buttons !default;
+/* @Param(type="choice", visibility={"bc-buttons" : "large"}, options={"choices"={"normal","italic"}, "expanded"=1}) @Group("default-buttons-text") */
+$fs-button-lg:              $fs-buttons !default;
+
+// Buttons -> Text -> Extra Large
+/* @Param(type="font", visibility={"bc-buttons" : "extralarge"}) @Group("default-buttons-text") */
+$ff-button-xlg:             $ff-buttons !default;
+/* @Param(type="number", visibility={"bc-buttons" : "extralarge"}, options={"units"={"rem","px","em","%"}, "responsive"=1}) @Group("default-buttons-text") */
+$fz-buttons-xlg-all:        $fz-buttons-all !default;
+/* @Param(type="number", visibility={"bc-buttons" : "extralarge"}, options={"step"=0.05,"decimals"=2,"min"=0.5}) @Group("default-buttons-text") */
+$lh-button-xlg:             $lh-buttons !default;
+/* @Param(type="number", visibility={"bc-buttons" : "extralarge"}, options={"units"={"rem","px"}, "min"=-1000, "step"=0.1}) @Group("default-buttons-text") */
+$ls-button-xlg:             $ls-buttons !default;
+/* @Param(type="choice", visibility={"bc-buttons" : "extralarge"}, options={"choices"={100,200,300,400,500,600,700,800,900}}) @Group("default-buttons-text") */
+$fw-button-xlg:             $fw-buttons !default;
+/* @Param(type="choice", visibility={"bc-buttons" : "extralarge"}, options={"choices"={"none","uppercase","lowercase"}, "expanded"=1}) @Group("default-buttons-text") */
+$tt-button-xlg:             $tt-buttons !default;
+/* @Param(type="choice", visibility={"bc-buttons" : "extralarge"}, options={"choices"={"normal","italic"}, "expanded"=1}) @Group("default-buttons-text") */
+$fs-button-xlg:             $fs-buttons !default;
+
+// Buttons -> Border
+/* @Param(type="choice", options={"choices"={"none", "solid", "dashed", "dotted", "double"}, "expanded"=1}) @Group("default-buttons-border") */
+$button-border-style:        solid !default;
+/* @Param(type="spacing", options={"units"={"px", "rem", "vh", "vw"}}, visibility={"button-border-style"={"solid", "dashed", "dotted", "double"}}) @Group("default-buttons-border") */
+$button-border-width:        1px !default;
+/* @Param(type="color", options={"allowBlank"=true, "allowTransparent"=true, "allowAlpha"=true, "width"=50}, visibility={"button-border-style"={"solid", "dashed", "dotted", "double"}}) @Group("default-buttons-border") */
+$button-border-color:        transparent !default;
+/* @Param(type="color", options={"allowBlank"=true, "allowTransparent"=true, "allowAlpha"=true, "width"=50}, visibility={"button-border-style"={"solid", "dashed", "dotted", "double"}}) @Group("default-buttons-border") */
+$button-border-color-active: transparent !default;
+/* @Param(type="border-radius", options={"units"={"px", "rem", "vh", "vw"}}) @Group("default-buttons-border") */
+$button-border-radius:       0px !default;
+
+// Buttons -> Spacing
+/* @Param(type="choice", options={"choices"={"small","normal","large","extralarge"}, "expanded"=1}) @Group("default-buttons-spacing") */
+$bs-choice:                     normal !default;
+/* @Param(type="number", visibility={"bs-choice" : "small"}, options={"units"={"rem", "px"}}) @Group("default-buttons-spacing") */
+$button-padding-horizontal-sm:  .5rem !default;
+/* @Param(type="number", visibility={"bs-choice" : "small"}, options={"units"={"rem", "px"}}) @Group("default-buttons-spacing") */
+$button-padding-vertical-sm:    .25rem !default;
+/* @Param(type="number", visibility={"bs-choice" : "normal"}, options={"units"={"rem", "px"}}) @Group("default-buttons-spacing") */
+$button-padding-horizontal:     1rem !default;
+/* @Param(type="number", visibility={"bs-choice" : "normal"}, options={"units"={"rem", "px"}}) @Group("default-buttons-spacing") */
+$button-padding-vertical:       .5rem !default;
+/* @Param(type="number", visibility={"bs-choice" : "large"}, options={"units"={"rem", "px"}}) @Group("default-buttons-spacing") */
+$button-padding-horizontal-lg:  1.5rem !default;
+/* @Param(type="number", visibility={"bs-choice" : "large"}, options={"units"={"rem", "px"}}) @Group("default-buttons-spacing") */
+$button-padding-vertical-lg:    .75rem !default;
+/* @Param(type="number", visibility={"bs-choice" : "extralarge"}, options={"units"={"rem", "px"}}) @Group("default-buttons-spacing") */
+$button-padding-horizontal-xlg: 2rem !default;
+/* @Param(type="number", visibility={"bs-choice" : "extralarge"}, options={"units"={"rem", "px"}}) @Group("default-buttons-spacing") */
+$button-padding-vertical-xlg:   1rem !default;
+
+// Buttons -> Effects
+/* @Param(type="choice", options={"choices"={"normal","hover-active"}, "expanded"=1}) @Group("default-buttons-shadow") */
+$button-shadow-choice:          normal !default;
+/* @Param(type="shadow", visibility={"button-shadow-choice" : "normal"}) @Group("default-buttons-shadow") */
+$button-box-shadow:             none !default;
+/* @Param(type="shadow", visibility={"button-shadow-choice" : "hover-active"}) @Group("default-buttons-shadow") */
+$button-box-shadow-active:      $button-box-shadow !default;
+/* @Param(type="choice", options={"choices"={"normal","hover-active"}, "expanded"=1}) @Group("default-buttons-transform") */
+$button-transform-choice:       normal !default;
+/* @Param(type="transform", visibility={"button-transform-choice" : "normal"}) @Group("default-buttons-transform") */
+$button-transform:              none !default;
+/* @Param(type="transform", visibility={"button-transform-choice" : "hover-active"}) @Group("default-buttons-transform") */
+$button-transform-active:       $button-transform !default;
+/* @Param(type="number", options={"units"={"s"}}) @Group("default-buttons-transition") */
+$button-transition-duration:    $transition-duration !default;
+/* @Param(type="choice", options={"choices"={"ease", "ease-in", "ease-out", "ease-in-out", "linear"}}) @Group("default-buttons-transition") */
+$button-transition-timing:      $transition-timing !default;
+$button-transition-base:        all $button-transition-duration $button-transition-timing !default;
+
+// Primary variant
+// Buttons -> Colors
+/* @Param(type="color", label="button-background.label", options={"allowBlank"=true, "allowTransparent"=true, "allowAlpha"=true, "width"=50}) @Group("primary-buttons-color") */
+$primary-button-background:         $button-background !default;
+/* @Param(type="color", label="button-background-active.label", options={"allowBlank"=true, "allowTransparent"=true, "allowAlpha"=true, "width"=50}) @Group("primary-buttons-color") */
+$primary-button-background-active:  $button-background-active !default;
+/* @Param(type="color", label="button-color.label", options={"allowBlank"=true, "allowTransparent"=true, "allowAlpha"=true, "width"=50}) @Group("primary-buttons-color") */
+$primary-button-color:              $button-color !default;
+/* @Param(type="color", label="button-color-active.label", options={"allowBlank"=true, "allowTransparent"=true, "allowAlpha"=true, "width"=50}) @Group("primary-buttons-color") */
+$primary-button-color-active:       $button-color-active !default;
+
+// Buttons -> Text
+/* @Param(type="choice", label="bc-buttons", options={"choices"={"small","normal","large","extralarge"}, "expanded"=1}) @Group("primary-buttons-text") */
+$primary-bc-buttons:                $bc-buttons !default;
+
+// Buttons -> Text -> Normal
+/* @Param(type="font", label="ff-buttons.label", visibility={"primary-bc-buttons" : "normal"}) @Group("primary-buttons-text") */
+$primary-ff-buttons:                $ff-buttons !default;
+/* @Param(type="number", label="fz-buttons-all.label", visibility={"primary-bc-buttons" : "normal"}, options={"units"={"rem","px","em","%"}, "responsive"=1}) @Group("primary-buttons-text") */
+$primary-fz-buttons-all:            $fz-buttons-all !default;
+/* @Param(type="number", label="lh-buttons.label", visibility={"primary-bc-buttons" : "normal"}, options={"step"=0.05,"decimals"=2,"min"=0.5}) @Group("primary-buttons-text") */
+$primary-lh-buttons:                $lh-buttons !default;
+/* @Param(type="number", label="ls-buttons.label", visibility={"primary-bc-buttons" : "normal"}, options={"units"={"rem","px"}, "min"=-1000, "step"=0.1}) @Group("primary-buttons-text") */
+$primary-ls-buttons:                $ls-buttons !default;
+/* @Param(type="choice", label="fw-buttons.label", visibility={"primary-bc-buttons" : "normal"}, options={"choices"={100,200,300,400,500,600,700,800,900}}) @Group("primary-buttons-text") */
+$primary-fw-buttons:                $fw-buttons !default;
+/* @Param(type="choice", label="tt-buttons.label", visibility={"primary-bc-buttons" : "normal"}, options={"choices"={"none","uppercase","lowercase"}, "expanded"=1}) @Group("primary-buttons-text") */
+$primary-tt-buttons:                $tt-buttons !default;
+/* @Param(type="choice", label="fs-buttons.label", visibility={"primary-bc-buttons" : "normal"}, options={"choices"={"normal","italic"}, "expanded"=1}) @Group("primary-buttons-text") */
+$primary-fs-buttons:                $fs-buttons !default;
+
+// Buttons -> Text -> Small
+/* @Param(type="font", label="ff-button-sm.label", visibility={"primary-bc-buttons" : "small"}) @Group("primary-buttons-text") */
+$primary-ff-button-sm:              $ff-button-sm !default;
+/* @Param(type="number", label="fz-buttons-sm-all.label", visibility={"primary-bc-buttons" : "small"}, options={"units"={"rem","px","em","%"}, "responsive"=1}) @Group("primary-buttons-text") */
+$primary-fz-buttons-sm-all:         $fz-buttons-sm-all !default;
+/* @Param(type="number", label="lh-button-sm.label", visibility={"primary-bc-buttons" : "small"}, options={"step"=0.05,"decimals"=2,"min"=0.5}) @Group("primary-buttons-text") */
+$primary-lh-button-sm:              $lh-button-sm !default;
+/* @Param(type="number", label="ls-button-sm.label", visibility={"primary-bc-buttons" : "small"}, options={"units"={"rem","px"}, "min"=-1000, "step"=0.1}) @Group("primary-buttons-text") */
+$primary-ls-button-sm:              $ls-button-sm !default;
+/* @Param(type="choice", label="fw-button-sm.label", visibility={"primary-bc-buttons" : "small"}, options={"choices"={100,200,300,400,500,600,700,800,900}}) @Group("primary-buttons-text") */
+$primary-fw-button-sm:              $fw-button-sm !default;
+/* @Param(type="choice", label="tt-button-sm.label", visibility={"primary-bc-buttons" : "small"}, options={"choices"={"none","uppercase","lowercase"}, "expanded"=1}) @Group("primary-buttons-text") */
+$primary-tt-button-sm:              $tt-button-sm !default;
+/* @Param(type="choice", label="fs-button-sm.label", visibility={"primary-bc-buttons" : "small"}, options={"choices"={"normal","italic"}, "expanded"=1}) @Group("primary-buttons-text") */
+$primary-fs-button-sm:              $fs-button-sm !default;
+
+// Buttons -> Text -> Large
+/* @Param(type="font", label="ff-button-lg.label", visibility={"primary-bc-buttons" : "large"}) @Group("primary-buttons-text") */
+$primary-ff-button-lg:              $ff-button-lg !default;
+/* @Param(type="number", label="fz-buttons-lg-all.label", visibility={"primary-bc-buttons" : "large"}, options={"units"={"rem","px","em","%"}, "responsive"=1}) @Group("primary-buttons-text") */
+$primary-fz-buttons-lg-all:         $fz-buttons-lg-all !default;
+/* @Param(type="number", label="lh-button-lg.label", visibility={"primary-bc-buttons" : "large"}, options={"step"=0.05,"decimals"=2,"min"=0.5}) @Group("primary-buttons-text") */
+$primary-lh-button-lg:              $lh-button-lg !default;
+/* @Param(type="number", label="ls-button-lg.label", visibility={"primary-bc-buttons" : "large"}, options={"units"={"rem","px"}, "min"=-1000, "step"=0.1}) @Group("primary-buttons-text") */
+$primary-ls-button-lg:              $ls-button-lg !default;
+/* @Param(type="choice", label="fw-button-lg.label", visibility={"primary-bc-buttons" : "large"}, options={"choices"={100,200,300,400,500,600,700,800,900}}) @Group("primary-buttons-text") */
+$primary-fw-button-lg:              $fw-button-lg !default;
+/* @Param(type="choice", label="tt-button-lg.label", visibility={"primary-bc-buttons" : "large"}, options={"choices"={"none","uppercase","lowercase"}, "expanded"=1}) @Group("primary-buttons-text") */
+$primary-tt-button-lg:              $tt-button-lg !default;
+/* @Param(type="choice", label="fs-button-lg.label", visibility={"primary-bc-buttons" : "large"}, options={"choices"={"normal","italic"}, "expanded"=1}) @Group("primary-buttons-text") */
+$primary-fs-button-lg:              $fs-button-lg !default;
+
+// Buttons -> Text -> Extra Large
+/* @Param(type="font", label="ff-button-xlg.label", visibility={"primary-bc-buttons" : "extralarge"}) @Group("primary-buttons-text") */
+$primary-ff-button-xlg:             $ff-button-xlg !default;
+/* @Param(type="number", label="fz-buttons-xlg-all.label", visibility={"primary-bc-buttons" : "extralarge"}, options={"units"={"rem","px","em","%"}, "responsive"=1}) @Group("primary-buttons-text") */
+$primary-fz-buttons-xlg-all:        $fz-buttons-xlg-all !default;
+/* @Param(type="number", label="lh-button-xlg.label", visibility={"primary-bc-buttons" : "extralarge"}, options={"step"=0.05,"decimals"=2,"min"=0.5}) @Group("primary-buttons-text") */
+$primary-lh-button-xlg:             $lh-button-xlg !default;
+/* @Param(type="number", label="ls-button-xlg.label", visibility={"primary-bc-buttons" : "extralarge"}, options={"units"={"rem","px"}, "min"=-1000, "step"=0.1}) @Group("primary-buttons-text") */
+$primary-ls-button-xlg:             $ls-button-xlg !default;
+/* @Param(type="choice", label="fw-button-xlg.label", visibility={"primary-bc-buttons" : "extralarge"}, options={"choices"={100,200,300,400,500,600,700,800,900}}) @Group("primary-buttons-text") */
+$primary-fw-button-xlg:             $fw-button-xlg !default;
+/* @Param(type="choice", label="tt-button-xlg.label", visibility={"primary-bc-buttons" : "extralarge"}, options={"choices"={"none","uppercase","lowercase"}, "expanded"=1}) @Group("primary-buttons-text") */
+$primary-tt-button-xlg:             $tt-button-xlg !default;
+/* @Param(type="choice", label="fs-button-xlg.label", visibility={"primary-bc-buttons" : "extralarge"}, options={"choices"={"normal","italic"}, "expanded"=1}) @Group("primary-buttons-text") */
+$primary-fs-button-xlg:             $fs-button-xlg !default;
+
+// Buttons -> Border
+/* @Param(type="choice", label="button-border-style.label", options={"choices"={"none", "solid", "dashed", "dotted", "double"}, "expanded"=1}) @Group("primary-buttons-border") */
+$primary-button-border-style:        $button-border-style !default;
+/* @Param(type="spacing", label="button-border-width.label", options={"units"={"px", "rem", "vh", "vw"}}, visibility={"button-border-style"={"solid", "dashed", "dotted", "double"}}) @Group("primary-buttons-border") */
+$primary-button-border-width:        $button-border-width !default;
+/* @Param(type="color", label="button-border-color.label", options={"allowBlank"=true, "allowTransparent"=true, "allowAlpha"=true, "width"=50}, visibility={"button-border-style"={"solid", "dashed", "dotted", "double"}}) @Group("primary-buttons-border") */
+$primary-button-border-color:        $button-border-color !default;
+/* @Param(type="color", label="button-border-color-active.label", options={"allowBlank"=true, "allowTransparent"=true, "allowAlpha"=true, "width"=50}, visibility={"button-border-style"={"solid", "dashed", "dotted", "double"}}) @Group("primary-buttons-border") */
+$primary-button-border-color-active: $button-border-color-active !default;
+/* @Param(type="border-radius", label="button-border-radius.label", options={"units"={"px", "rem", "vh", "vw"}}) @Group("primary-buttons-border") */
+$primary-button-border-radius:       $button-border-radius !default;
+
+// Buttons -> Spacing
+/* @Param(type="choice", label="bs-choice", options={"choices"={"small","normal","large","extralarge"}, "expanded"=1}) @Group("primary-buttons-spacing") */
+$primary-bs-choice:                     $bs-choice !default;
+/* @Param(type="number", label="button-padding-horizontal-sm.label", visibility={"primary-bs-choice" : "small"}, options={"units"={"rem", "px"}}) @Group("primary-buttons-spacing") */
+$primary-button-padding-horizontal-sm:  $button-padding-horizontal-sm !default;
+/* @Param(type="number", label="button-padding-vertical-sm.label", visibility={"primary-bs-choice" : "small"}, options={"units"={"rem", "px"}}) @Group("primary-buttons-spacing") */
+$primary-button-padding-vertical-sm:    $button-padding-vertical-sm !default;
+/* @Param(type="number", label="button-padding-horizontal.label", visibility={"primary-bs-choice" : "normal"}, options={"units"={"rem", "px"}}) @Group("primary-buttons-spacing") */
+$primary-button-padding-horizontal:     $button-padding-horizontal !default;
+/* @Param(type="number", label="button-padding-vertical.label", visibility={"primary-bs-choice" : "normal"}, options={"units"={"rem", "px"}}) @Group("primary-buttons-spacing") */
+$primary-button-padding-vertical:       $button-padding-vertical !default;
+/* @Param(type="number", label="button-padding-horizontal-lg.label", visibility={"primary-bs-choice" : "large"}, options={"units"={"rem", "px"}}) @Group("primary-buttons-spacing") */
+$primary-button-padding-horizontal-lg:  $button-padding-horizontal-lg !default;
+/* @Param(type="number", label="button-padding-vertical-lg.label", visibility={"primary-bs-choice" : "large"}, options={"units"={"rem", "px"}}) @Group("primary-buttons-spacing") */
+$primary-button-padding-vertical-lg:    $button-padding-vertical-lg !default;
+/* @Param(type="number", label="button-padding-horizontal-xlg.label", visibility={"primary-bs-choice" : "extralarge"}, options={"units"={"rem", "px"}}) @Group("primary-buttons-spacing") */
+$primary-button-padding-horizontal-xlg: $button-padding-horizontal-xlg !default;
+/* @Param(type="number", label="button-padding-vertical-xlg.label", visibility={"primary-bs-choice" : "extralarge"}, options={"units"={"rem", "px"}}) @Group("primary-buttons-spacing") */
+$primary-button-padding-vertical-xlg:   $button-padding-vertical-xlg !default;
+
+// Buttons -> Effects
+/* @Param(type="choice", label="button-shadow-choice.label", options={"choices"={"normal","hover-active"}, "expanded"=1}) @Group("primary-buttons-shadow") */
+$primary-button-shadow-choice:          $button-shadow-choice !default;
+/* @Param(type="shadow", label="button-box-shadow.label", visibility={"button-shadow-choice" : "normal"}) @Group("primary-buttons-shadow") */
+$primary-button-box-shadow:             $button-box-shadow !default;
+/* @Param(type="shadow", label="button-box-shadow-active.label", visibility={"button-shadow-choice" : "hover-active"}) @Group("primary-buttons-shadow") */
+$primary-button-box-shadow-active:      $button-box-shadow !default;
+/* @Param(type="choice", label="button-transform-choice.label", options={"choices"={"normal","hover-active"}, "expanded"=1}) @Group("primary-buttons-transform") */
+$primary-button-transform-choice:       $button-transform-choice !default;
+/* @Param(type="transform", label="button-transform.label", visibility={"button-transform-choice" : "normal"}) @Group("primary-buttons-transform") */
+$primary-button-transform:              $button-transform !default;
+/* @Param(type="transform", label="button-transform-active.label", visibility={"button-transform-choice" : "hover-active"}) @Group("primary-buttons-transform") */
+$primary-button-transform-active:       $button-transform-active !default;
+/* @Param(type="number", label="button-transition-duration.label", options={"units"={"s"}}) @Group("primary-buttons-transition") */
+$primary-button-transition-duration:    $button-transition-duration !default;
+/* @Param(type="choice", label="button-transition-timing.label", options={"choices"={"ease", "ease-in", "ease-out", "ease-in-out", "linear"}}) @Group("primary-buttons-transition") */
+$primary-button-transition-timing:      $button-transition-timing !default;
+$primary-button-transition-base:        all $button-transition-duration $button-transition-timing !default;
+
+// Secondary Variant
+// Buttons -> Colors
+/* @Param(type="color", label="button-background.label", options={"allowBlank"=true, "allowTransparent"=true, "allowAlpha"=true, "width"=50}) @Group("secondary-buttons-color") */
+$secondary-button-background:         $button-background !default;
+/* @Param(type="color", label="button-background-active.label", options={"allowBlank"=true, "allowTransparent"=true, "allowAlpha"=true, "width"=50}) @Group("secondary-buttons-color") */
+$secondary-button-background-active:  $button-background-active !default;
+/* @Param(type="color", label="button-color.label", options={"allowBlank"=true, "allowTransparent"=true, "allowAlpha"=true, "width"=50}) @Group("secondary-buttons-color") */
+$secondary-button-color:              $button-color !default;
+/* @Param(type="color", label="button-color-active.label", options={"allowBlank"=true, "allowTransparent"=true, "allowAlpha"=true, "width"=50}) @Group("secondary-buttons-color") */
+$secondary-button-color-active:       $button-color-active !default;
+
+// Buttons -> Text
+/* @Param(type="choice", label="bc-buttons", options={"choices"={"small","normal","large","extralarge"}, "expanded"=1}) @Group("secondary-buttons-text") */
+$secondary-bc-buttons:                $bc-buttons !default;
+
+// Buttons -> Text -> Normal
+/* @Param(type="font", label="ff-buttons.label", visibility={"secondary-bc-buttons" : "normal"}) @Group("secondary-buttons-text") */
+$secondary-ff-buttons:                $ff-buttons !default;
+/* @Param(type="number", label="fz-buttons-all.label", visibility={"secondary-bc-buttons" : "normal"}, options={"units"={"rem","px","em","%"}, "responsive"=1}) @Group("secondary-buttons-text") */
+$secondary-fz-buttons-all:            $fz-buttons-all !default;
+/* @Param(type="number", label="lh-buttons.label", visibility={"secondary-bc-buttons" : "normal"}, options={"step"=0.05,"decimals"=2,"min"=0.5}) @Group("secondary-buttons-text") */
+$secondary-lh-buttons:                $lh-buttons !default;
+/* @Param(type="number", label="ls-buttons.label", visibility={"secondary-bc-buttons" : "normal"}, options={"units"={"rem","px"}, "min"=-1000, "step"=0.1}) @Group("secondary-buttons-text") */
+$secondary-ls-buttons:                $ls-buttons !default;
+/* @Param(type="choice", label="fw-buttons.label", visibility={"secondary-bc-buttons" : "normal"}, options={"choices"={100,200,300,400,500,600,700,800,900}}) @Group("secondary-buttons-text") */
+$secondary-fw-buttons:                $fw-buttons !default;
+/* @Param(type="choice", label="tt-buttons.label", visibility={"secondary-bc-buttons" : "normal"}, options={"choices"={"none","uppercase","lowercase"}, "expanded"=1}) @Group("secondary-buttons-text") */
+$secondary-tt-buttons:                $tt-buttons !default;
+/* @Param(type="choice", label="fs-buttons.label", visibility={"secondary-bc-buttons" : "normal"}, options={"choices"={"normal","italic"}, "expanded"=1}) @Group("secondary-buttons-text") */
+$secondary-fs-buttons:                $fs-buttons !default;
+
+// Buttons -> Text -> Small
+/* @Param(type="font", label="ff-button-sm.label", visibility={"secondary-bc-buttons" : "small"}) @Group("secondary-buttons-text") */
+$secondary-ff-button-sm:              $ff-button-sm !default;
+/* @Param(type="number", label="fz-buttons-sm-all.label", visibility={"secondary-bc-buttons" : "small"}, options={"units"={"rem","px","em","%"}, "responsive"=1}) @Group("secondary-buttons-text") */
+$secondary-fz-buttons-sm-all:         $fz-buttons-sm-all !default;
+/* @Param(type="number", label="lh-button-sm.label", visibility={"secondary-bc-buttons" : "small"}, options={"step"=0.05,"decimals"=2,"min"=0.5}) @Group("secondary-buttons-text") */
+$secondary-lh-button-sm:              $lh-button-sm !default;
+/* @Param(type="number", label="ls-button-sm.label", visibility={"secondary-bc-buttons" : "small"}, options={"units"={"rem","px"}, "min"=-1000, "step"=0.1}) @Group("secondary-buttons-text") */
+$secondary-ls-button-sm:              $ls-button-sm !default;
+/* @Param(type="choice", label="fw-button-sm.label", visibility={"secondary-bc-buttons" : "small"}, options={"choices"={100,200,300,400,500,600,700,800,900}}) @Group("secondary-buttons-text") */
+$secondary-fw-button-sm:              $fw-button-sm !default;
+/* @Param(type="choice", label="tt-button-sm.label", visibility={"secondary-bc-buttons" : "small"}, options={"choices"={"none","uppercase","lowercase"}, "expanded"=1}) @Group("secondary-buttons-text") */
+$secondary-tt-button-sm:              $tt-button-sm !default;
+/* @Param(type="choice", label="fs-button-sm.label", visibility={"secondary-bc-buttons" : "small"}, options={"choices"={"normal","italic"}, "expanded"=1}) @Group("secondary-buttons-text") */
+$secondary-fs-button-sm:              $fs-button-sm !default;
+
+// Buttons -> Text -> Large
+/* @Param(type="font", label="ff-button-lg.label", visibility={"secondary-bc-buttons" : "large"}) @Group("secondary-buttons-text") */
+$secondary-ff-button-lg:              $ff-button-lg !default;
+/* @Param(type="number", label="fz-buttons-lg-all.label", visibility={"secondary-bc-buttons" : "large"}, options={"units"={"rem","px","em","%"}, "responsive"=1}) @Group("secondary-buttons-text") */
+$secondary-fz-buttons-lg-all:         $fz-buttons-lg-all !default;
+/* @Param(type="number", label="lh-button-lg.label", visibility={"secondary-bc-buttons" : "large"}, options={"step"=0.05,"decimals"=2,"min"=0.5}) @Group("secondary-buttons-text") */
+$secondary-lh-button-lg:              $lh-button-lg !default;
+/* @Param(type="number", label="ls-button-lg.label", visibility={"secondary-bc-buttons" : "large"}, options={"units"={"rem","px"}, "min"=-1000, "step"=0.1}) @Group("secondary-buttons-text") */
+$secondary-ls-button-lg:              $ls-button-lg !default;
+/* @Param(type="choice", label="fw-button-lg.label", visibility={"secondary-bc-buttons" : "large"}, options={"choices"={100,200,300,400,500,600,700,800,900}}) @Group("secondary-buttons-text") */
+$secondary-fw-button-lg:              $fw-button-lg !default;
+/* @Param(type="choice", label="tt-button-lg.label", visibility={"secondary-bc-buttons" : "large"}, options={"choices"={"none","uppercase","lowercase"}, "expanded"=1}) @Group("secondary-buttons-text") */
+$secondary-tt-button-lg:              $tt-button-lg !default;
+/* @Param(type="choice", label="fs-button-lg.label", visibility={"secondary-bc-buttons" : "large"}, options={"choices"={"normal","italic"}, "expanded"=1}) @Group("secondary-buttons-text") */
+$secondary-fs-button-lg:              $fs-button-lg !default;
+
+// Buttons -> Text -> Extra Large
+/* @Param(type="font", label="ff-button-xlg.label", visibility={"secondary-bc-buttons" : "extralarge"}) @Group("secondary-buttons-text") */
+$secondary-ff-button-xlg:             $ff-button-xlg !default;
+/* @Param(type="number", label="fz-buttons-xlg-all.label", visibility={"secondary-bc-buttons" : "extralarge"}, options={"units"={"rem","px","em","%"}, "responsive"=1}) @Group("secondary-buttons-text") */
+$secondary-fz-buttons-xlg-all:        $fz-buttons-xlg-all !default;
+/* @Param(type="number", label="lh-button-xlg.label", visibility={"secondary-bc-buttons" : "extralarge"}, options={"step"=0.05,"decimals"=2,"min"=0.5}) @Group("secondary-buttons-text") */
+$secondary-lh-button-xlg:             $lh-button-xlg !default;
+/* @Param(type="number", label="ls-button-xlg.label", visibility={"secondary-bc-buttons" : "extralarge"}, options={"units"={"rem","px"}, "min"=-1000, "step"=0.1}) @Group("secondary-buttons-text") */
+$secondary-ls-button-xlg:             $ls-button-xlg !default;
+/* @Param(type="choice", label="fw-button-xlg.label", visibility={"secondary-bc-buttons" : "extralarge"}, options={"choices"={100,200,300,400,500,600,700,800,900}}) @Group("secondary-buttons-text") */
+$secondary-fw-button-xlg:             $fw-button-xlg !default;
+/* @Param(type="choice", label="tt-button-xlg.label", visibility={"secondary-bc-buttons" : "extralarge"}, options={"choices"={"none","uppercase","lowercase"}, "expanded"=1}) @Group("secondary-buttons-text") */
+$secondary-tt-button-xlg:             $tt-button-xlg !default;
+/* @Param(type="choice", label="fs-button-xlg.label", visibility={"secondary-bc-buttons" : "extralarge"}, options={"choices"={"normal","italic"}, "expanded"=1}) @Group("secondary-buttons-text") */
+$secondary-fs-button-xlg:             $fs-button-xlg !default;
+
+// Buttons -> Border
+/* @Param(type="choice", label="button-border-style.label", options={"choices"={"none", "solid", "dashed", "dotted", "double"}, "expanded"=1}) @Group("secondary-buttons-border") */
+$secondary-button-border-style:        $button-border-style !default;
+/* @Param(type="spacing", label="button-border-width.label", options={"units"={"px", "rem", "vh", "vw"}}, visibility={"button-border-style"={"solid", "dashed", "dotted", "double"}}) @Group("secondary-buttons-border") */
+$secondary-button-border-width:        $button-border-width !default;
+/* @Param(type="color", label="button-border-color.label", options={"allowBlank"=true, "allowTransparent"=true, "allowAlpha"=true, "width"=50}, visibility={"button-border-style"={"solid", "dashed", "dotted", "double"}}) @Group("secondary-buttons-border") */
+$secondary-button-border-color:        $button-border-color !default;
+/* @Param(type="color", label="button-border-color-active.label", options={"allowBlank"=true, "allowTransparent"=true, "allowAlpha"=true, "width"=50}, visibility={"button-border-style"={"solid", "dashed", "dotted", "double"}}) @Group("secondary-buttons-border") */
+$secondary-button-border-color-active: $button-border-color-active !default;
+/* @Param(type="border-radius", label="button-border-radius.label", options={"units"={"px", "rem", "vh", "vw"}}) @Group("secondary-buttons-border") */
+$secondary-button-border-radius:       $button-border-radius !default;
+
+// Buttons -> Spacing
+/* @Param(type="choice", label="bs-choice", options={"choices"={"small","normal","large","extralarge"}, "expanded"=1}) @Group("secondary-buttons-spacing") */
+$secondary-bs-choice:                     $bs-choice !default;
+/* @Param(type="number", label="button-padding-horizontal-sm.label", visibility={"secondary-bs-choice" : "small"}, options={"units"={"rem", "px"}}) @Group("secondary-buttons-spacing") */
+$secondary-button-padding-horizontal-sm:  $button-padding-horizontal-sm !default;
+/* @Param(type="number", label="button-padding-vertical-sm.label", visibility={"secondary-bs-choice" : "small"}, options={"units"={"rem", "px"}}) @Group("secondary-buttons-spacing") */
+$secondary-button-padding-vertical-sm:    $button-padding-vertical-sm !default;
+/* @Param(type="number", label="button-padding-horizontal.label", visibility={"secondary-bs-choice" : "normal"}, options={"units"={"rem", "px"}}) @Group("secondary-buttons-spacing") */
+$secondary-button-padding-horizontal:     $button-padding-horizontal !default;
+/* @Param(type="number", label="button-padding-vertical.label", visibility={"secondary-bs-choice" : "normal"}, options={"units"={"rem", "px"}}) @Group("secondary-buttons-spacing") */
+$secondary-button-padding-vertical:       $button-padding-vertical !default;
+/* @Param(type="number", label="button-padding-horizontal-lg.label", visibility={"secondary-bs-choice" : "large"}, options={"units"={"rem", "px"}}) @Group("secondary-buttons-spacing") */
+$secondary-button-padding-horizontal-lg:  $button-padding-horizontal-lg !default;
+/* @Param(type="number", label="button-padding-vertical-lg.label", visibility={"secondary-bs-choice" : "large"}, options={"units"={"rem", "px"}}) @Group("secondary-buttons-spacing") */
+$secondary-button-padding-vertical-lg:    $button-padding-vertical-lg !default;
+/* @Param(type="number", label="button-padding-horizontal-xlg.label", visibility={"secondary-bs-choice" : "extralarge"}, options={"units"={"rem", "px"}}) @Group("secondary-buttons-spacing") */
+$secondary-button-padding-horizontal-xlg: $button-padding-horizontal-xlg !default;
+/* @Param(type="number", label="button-padding-vertical-xlg.label", visibility={"secondary-bs-choice" : "extralarge"}, options={"units"={"rem", "px"}}) @Group("secondary-buttons-spacing") */
+$secondary-button-padding-vertical-xlg:   $button-padding-vertical-xlg !default;
+
+// Buttons -> Effects
+/* @Param(type="choice", label="button-shadow-choice.label", options={"choices"={"normal","hover-active"}, "expanded"=1}) @Group("secondary-buttons-shadow") */
+$secondary-button-shadow-choice:          $button-shadow-choice !default;
+/* @Param(type="shadow", label="button-box-shadow.label", visibility={"button-shadow-choice" : "normal"}) @Group("secondary-buttons-shadow") */
+$secondary-button-box-shadow:             $button-box-shadow !default;
+/* @Param(type="shadow", label="button-box-shadow-active.label", visibility={"button-shadow-choice" : "hover-active"}) @Group("secondary-buttons-shadow") */
+$secondary-button-box-shadow-active:      $button-box-shadow-active !default;
+/* @Param(type="choice", label="button-transform-choice.label", options={"choices"={"normal","hover-active"}, "expanded"=1}) @Group("secondary-buttons-transform") */
+$secondary-button-transform-choice:       $button-transform-choice !default;
+/* @Param(type="transform", label="button-transform.label", visibility={"button-transform-choice" : "normal"}) @Group("secondary-buttons-transform") */
+$secondary-button-transform:              $button-transform !default;
+/* @Param(type="transform", label="button-transform-active.label", visibility={"button-transform-choice" : "hover-active"}) @Group("secondary-buttons-transform") */
+$secondary-button-transform-active:       $button-transform-active !default;
+/* @Param(type="number", label="button-transition-duration.label", options={"units"={"s"}}) @Group("secondary-buttons-transition") */
+$secondary-button-transition-duration:    $button-transition-duration !default;
+/* @Param(type="choice", label="button-transition-timing.label", options={"choices"={"ease", "ease-in", "ease-out", "ease-in-out", "linear"}}) @Group("secondary-buttons-transition") */
+$secondary-button-transition-timing:      $button-transition-timing !default;
+$secondary-button-transition-base:        all $button-transition-duration $button-transition-timing !default;
+
+
+// Store
+
+// Product Global
+$store-enabled:             false !default;
+/* @Param(type="color", options={"allowBlank"=true}) @Group("store-product") */
+$store-product-background:  none !default;
+/* @Param(type="color", options={"allowBlank"=true}) @Group("store-product") */
+$store-product-color:       $none !default;
+/* @Param(type="number", options={"units"={"rem", "px"}}) @Group("store-product") */
+$store-product-padding:     0 !default;
+/* @Param(type="bool") @Group("store-product") */
+$store-product-categories:  false !default;
+
+// Product Headline
+/* @Param(type="bool") @Group("store-product-headline") */
+$store-product-headline-show:   true !default;
+/* @Color @Group("store-product-headline") */
+$store-product-headline-color:  $color-primary !default;
+/* @Param(type="font") @Group("store-product-headline") */
+$store-product-headline-ff:     $ff-headlines !default;
+/* @Param(type="number", options={"units"={"rem","px","em","%"}, "responsive"=1}) @Group("store-product-headline") */
+$store-product-headline-fz-all: $fz-h2-all !default;
+/* @Param(type="choice", options={"choices"={100,200,300,400,500,600,700,800,900}}) @Group("store-product-headline") */
+$store-product-headline-fw:     $fw-h2 !default;
+/* @Param(type="choice", options={"choices"={"none","uppercase","lowercase"}, "expanded"=1}) @Group("store-product-headline") */
+$store-product-headline-tt:     $tt-h2 !default;
+
+// Product Title
+/* @Param(type="color", options={"allowBlank"=true}) @Group("store-product-title") */
+$store-product-title-color: $none !default;
+/* @Param(type="font") @Group("store-product-title") */
+$store-product-title-ff:    $font-default !default;
+/* @Param(type="number", options={"units"={"rem","px","em","%"}, "responsive"=1}) @Group("store-product-title") */
+$store-product-title-fz-all:$fz-base-all !default;
+/* @Param(type="choice", options={"choices"={100,200,300,400,500,600,700,800,900}}) @Group("store-product-title") */
+$store-product-title-fw:    $fw-base !default;
+
+// Product - Price
+/* @Color @Group("store-product-price") */
+$store-product-price-color: $color-primary !default;
+/* @Param(type="font") @Group("store-product-price") */
+$store-product-price-ff:    $ff-headlines !default;
+/* @Param(type="number", options={"units"={"rem","px","em","%"}, "responsive"=1}) @Group("store-product-price") */
+$store-product-price-fz-all:$fz-h4-all !default;
+/* @Param(type="choice", options={"choices"={100,200,300,400,500,600,700,800,900}}) @Group("store-product-price") */
+$store-product-price-fw:    $fw-h4 !default;
+
+// Category
+/* @Color @Group("store-category") */
+$store-category-background:     $color-primary !default;
+/* @Param(type="number", options={"units"={"rem", "px"}}) @Group("store-category") */
+$store-category-padding:        0 !default;
+/* @Param(type="choice", options={"choices"={"none", "solid", "dashed", "dotted", "double"}, "expanded"=1}) @Group("store-category") */
+$store-category-border-style:   none !default;
+/* @Param(type="spacing", visibility={"store-category-border-style"={"solid", "dashed", "dotted", "double"}}, options={"units"={"px", "rem", "vh", "vw"}}) @Group("store-category") */
+$store-category-border-size:    1px !default;
+/* @Param(type="color", visibility={"store-category-border-style"={"solid", "dashed", "dotted", "double"}}) @Group("store-category") */
+$store-category-border-color:   $color-secondary !default;
+/* @Param(type="border-radius", options={"units"={"px", "rem", "vh", "vw"}}) @Group("store-category") */
+$store-category-border-radius:  0 !default;
+
+
+// Category - Link
+/* @Param(type="color", options={"width"=50}) @Group("store-category-link") */
+$store-category-link-background:        $none !default;
+/* @Param(type="color", options={"width"=50}) @Group("store-category-link") */
+$store-category-link-background-hover:  darken($color-primary,10%) !default;
+/* @Param(type="color", options={"allowBlank"=true, "width"=50}) @Group("store-category-link") */
+$store-category-link-color:             $none !default;
+/* @Param(type="color", options={"allowBlank"=true, "width"=50}) @Group("store-category-link") */
+$store-category-link-color-hover:       $none !default;
+/* @Param(type="number", options={"units"={"rem","px","em","%"}, "responsive"=1}) @Group("store-category-link") */
+$store-category-link-fz-all:            $fz-base-all !default;
+
+/* @Param(type="number", options={"units"={"rem", "px"}}) @Group("store-category-link") */
+$store-category-link-padding:           $spacer !default;
+/* @Param(type="number", options={"units"={"rem", "px"}}) @Group("store-category-link") */
+$store-category-link-margin:            0 !default;
+/* @Param(type="border-radius", options={"units"={"px", "rem", "vh", "vw"}}) @Group("store-category-link") */
+$store-category-link-border-radius:     0 !default;
+
+
+// Category - Sublink
+/* @Param(type="color", options={"width"=50}) @Group("store-category-sublink") */
+$store-category-sublink-background:        $store-category-link-background !default;
+/* @Param(type="color", options={"width"=50}) @Group("store-category-sublink") */
+$store-category-sublink-background-hover:  $store-category-link-background-hover !default;
+/* @Param(type="color", options={"allowBlank"=true, "width"=50}) @Group("store-category-sublink") */
+$store-category-sublink-color:             $store-category-link-color !default;
+/* @Param(type="color", options={"allowBlank"=true, "width"=50}) @Group("store-category-sublink") */
+$store-category-sublink-color-hover:       $store-category-link-color-hover !default;
+
+// Mini Card
+/* @Color @Group("store-mini-card") */
+$store-card-background: $color-primary !default;
+/* @Param(type="color", options={"allowBlank"=true}) @Group("store-mini-card") */
+$store-card-color:      $none !default;
+
+// Search
+/* @Color @Group("store-search") */
+$store-search-background:     $gray-lightest !default;
+/* @Param(type="color", options={"allowBlank"=true}) @Group("store-search") */
+$store-search-color:          $none !default;
+/* @Param(type="number", options={"units"={"rem", "px"}}) @Group("store-search") */
+$store-search-padding:        $spacer !default;
+/* @Param(type="choice", options={"choices"={"none", "solid", "dashed", "dotted", "double"}, "expanded"=1}) @Group("store-search") */
+$store-search-border-style:   none !default;
+/* @Param(type="spacing", visibility={"store-search-border-style"={"solid", "dashed", "dotted", "double"}}, options={"units"={"px", "rem", "vh", "vw"}}) @Group("store-search") */
+$store-search-border-size:    1px !default;
+/* @Param(type="color", visibility={"store-search-border-style"={"solid", "dashed", "dotted", "double"}}) @Group("store-search") */
+$store-search-border-color:   $color-secondary !default;
+/* @Param(type="border-radius", options={"units"={"px", "rem", "vh", "vw"}}) @Group("store-search") */
+$store-search-border-radius:  0px !default;
+
+
+// Deprecated values, needed for backwards compatibility
+$fw-light:                  300 !default;
+$fw-normal:                 $fw-base !default;
+$colorCorporate:            $color-primary !default;
+$colorSpecial:              $color-secondary !default;
+$colorDefault:              $color-default !default;
+$feature-gradients:         false !default;
+$feature-shadows:           false !default;
+$body-color:                $text-color !default;
+$body-bg:                   $white !default;
+$fz-lg:                     1.25rem !default;
+$fz-sm:                     .815rem !default;
+$fz-xs:                     .7rem !default;
+$link-bg:                   transparent !default;
+$link-hover-bg:             transparent !default;
+$lh-lg:                     1.25 !default;
+$button-text-style:         $tt-buttons !default;
+$spacer-container-lg:       nth(inherit-list($spacer-container-all), 1) !default;
+$spacer-container-sm:       nth(inherit-list($spacer-container-all), 2) !default;
+$spacer-container-xs:       nth(inherit-list($spacer-container-all), 3) !default;
+$spacer-container:          $spacer-container-lg !default;
+$fz-base:                   nth(inherit-list($fz-base-all), 1) !default;
+$fz-mod-sm:                 (to-rem(nth-or-default(inherit-list($fz-base-all), 2, 0)) / to-rem(nth-or-default(inherit-list($fz-base-all), 1, 1)) * 100) + 0% !default;
+$fz-mod-xs:                 (to-rem(nth-or-default(inherit-list($fz-base-all), 3, 0)) / to-rem(nth-or-default(inherit-list($fz-base-all), 1, 1)) * 100) + 0% !default;
+$lh-base:                   nth(inherit-list($lh-all), 1) !default;
+$lh-sm:                     nth(inherit-list($lh-all), 2) !default;
+$lh-xs:                     nth(inherit-list($lh-all), 3) !default;
+$ls-base:                   nth($ls-all, 1) !default;
+$lh-headlines:              nth($lh-headlines-all, 1) !default;
+$ls-headlines:              nth($ls-headlines-all, 1) !default;
+$lh-h1:                     nth($lh-h1-all, 1) !default;
+$ls-h1:                     nth($ls-h1-all, 1) !default;
+$lh-h2:                     nth($lh-h2-all, 1) !default;
+$ls-h2:                     nth($ls-h2-all, 1) !default;
+$lh-h3:                     nth($lh-h3-all, 1) !default;
+$ls-h3:                     nth($ls-h3-all, 1) !default;
+$lh-h4:                     nth($lh-h4-all, 1) !default;
+$ls-h4:                     nth($ls-h4-all, 1) !default;
+$lh-h5:                     nth($lh-h5-all, 1) !default;
+$ls-h5:                     nth($ls-h5-all, 1) !default;
+$lh-h6:                     nth($lh-h6-all, 1) !default;
+$ls-h6:                     nth($ls-h6-all, 1) !default;
+$fz-h1:                     nth(inherit-list($fz-h1-all), 1) !default;
+$fz-h1-sm:                  (to-rem(nth(inherit-list($fz-h1-all), 2)) / to-rem(nth(inherit-list($fz-h1-all), 1)) * 100) + 0% !default;
+$fz-h1-xs:                  (to-rem(nth(inherit-list($fz-h1-all), 3)) / to-rem(nth(inherit-list($fz-h1-all), 1)) * 100) + 0% !default;
+$fz-h2:                     nth(inherit-list($fz-h2-all), 1) !default;
+$fz-h2-sm:                  (to-rem(nth(inherit-list($fz-h2-all), 2)) / to-rem(nth(inherit-list($fz-h2-all), 1)) * 100) + 0% !default;
+$fz-h2-xs:                  (to-rem(nth(inherit-list($fz-h2-all), 3)) / to-rem(nth(inherit-list($fz-h2-all), 1)) * 100) + 0% !default;
+$fz-h3:                     nth(inherit-list($fz-h3-all), 1) !default;
+$fz-h3-sm:                  (to-rem(nth(inherit-list($fz-h3-all), 2)) / to-rem(nth(inherit-list($fz-h3-all), 1)) * 100) + 0% !default;
+$fz-h3-xs:                  (to-rem(nth(inherit-list($fz-h3-all), 3)) / to-rem(nth(inherit-list($fz-h3-all), 1)) * 100) + 0% !default;
+$fz-h4:                     nth(inherit-list($fz-h4-all), 1) !default;
+$fz-h4-sm:                  (to-rem(nth(inherit-list($fz-h4-all), 2)) / to-rem(nth(inherit-list($fz-h4-all), 1)) * 100) + 0% !default;
+$fz-h4-xs:                  (to-rem(nth(inherit-list($fz-h4-all), 3)) / to-rem(nth(inherit-list($fz-h4-all), 1)) * 100) + 0% !default;
+$fz-h5:                     nth(inherit-list($fz-h5-all), 1) !default;
+$fz-h5-sm:                  (to-rem(nth(inherit-list($fz-h5-all), 2)) / to-rem(nth(inherit-list($fz-h5-all), 1)) * 100) + 0% !default;
+$fz-h5-xs:                  (to-rem(nth(inherit-list($fz-h5-all), 3)) / to-rem(nth(inherit-list($fz-h5-all), 1)) * 100) + 0% !default;
+$fz-h6:                     nth(inherit-list($fz-h6-all), 1) !default;
+$fz-h6-sm:                  (to-rem(nth(inherit-list($fz-h6-all), 2)) / to-rem(nth(inherit-list($fz-h6-all), 1)) * 100) + 0% !default;
+$fz-h6-xs:                  (to-rem(nth(inherit-list($fz-h6-all), 3)) / to-rem(nth(inherit-list($fz-h6-all), 1)) * 100) + 0% !default;
+$fz-buttons-sm:             nth(inherit-list($fz-buttons-sm-all),1) !default;
+$fz-buttons:                nth(inherit-list($fz-buttons-all),1) !default;
+$fz-buttons-lg:             nth(inherit-list($fz-buttons-lg-all),1) !default;
+$fz-buttons-xlg:            nth(inherit-list($fz-buttons-xlg-all),1) !default;
+$store-product-headline-fz: nth(inherit-list($store-product-headline-fz-all),1) !default;
+$store-product-title-fz:    nth(inherit-list($store-product-title-fz-all),1) !default;
+$store-product-price-fz:    nth(inherit-list($store-product-price-fz-all),1) !default;
+$store-category-link-fz:    nth(inherit-list($store-category-link-fz-all),1) !default;
+// Mixins
+//
+
+@mixin button-variant($background: $color-primary,
+    $background-active: none,
+    $color: none,
+    $color-active: none,
+    $border-color: none,
+    $border-color-active: none) {
+    $background-check: first-color($background, $color-background);
+    $background-active-check: first-color($background-active, $background, $color-background);
+
+    $text-color: if(type-of($color)==color, $color, color-contrast($background-check, $text-color, $color-background));
+    $text-color-active: if(type-of($color-active)==color, $color-active, color-contrast($background-active-check, $text-color, $color-background));
+
+    $background-active: if(type-of($background-active)==color, $background-active, if(type-of($background)==color, darken($background, 10%), none));
+
+    $border-color: if(type-of($border-color)==color, $border-color, if(type-of($background)==color, $background, transparent));
+    $border-color-active: if(type-of($border-color-active)==color, $border-color-active, if(type-of($background-active)==color, $background-active, transparent));
+
+    background: $background;
+    color: $text-color;
+    border-color: $border-color;
+    $border-radius: if($feature-rounded, $border-radius, unset);
+
+    &.active,
+    &:hover {
+        background: $background-active;
+        color: $text-color-active;
+        border-color: $border-color-active;
+        cursor: pointer;
+    }
+}
+
+@mixin button-size($padding-x: 1rem,
+    $padding-y: .5rem,
+    $font-size: $fz-base-all,
+    $line-height: $lh-all
+) {
+    padding: $padding-y $padding-x;
+	@include media-constructor(font-size, $font-size);
+	@include media-constructor(line-height, $line-height);
+}
+
+@mixin clearfix() {
+    &::after {
+        display: block;
+        clear: both;
+        content: "";
+    }
+}
+
+@mixin fake-element {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+}
+
+@mixin container-sized {
+    padding-right: $spacer;
+    padding-left: $spacer;
+    margin: 0 auto;
+
+    @media screen and (min-width: $breakpoint-xs) {
+        width: ($breakpoint-xs - ($spacer * 2));
+    }
+
+    @media screen and (min-width: $breakpoint-sm) {
+        width: $breakpoint-xs;
+    }
+
+    @media screen and (min-width: $breakpoint-md) {
+        width: $breakpoint-sm;
+    }
+
+    @media screen and (min-width: $breakpoint-lg) {
+        width: $breakpoint-md;
+    }
+
+    @media screen and (min-width: $breakpoint-xl) {
+        width: $breakpoint-lg;
+    }
+}
+
+@mixin container-boxed {
+    padding-left: $spacer;
+    padding-right: $spacer;
+    margin-left: auto;
+    margin-right: auto;
+
+    max-width: $content-width;
+}
+
+@mixin container-fixed {
+    @include container-boxed;
+}
+
+@mixin list-custom-icon($color: $color-primary, $width: $spacer, $font: FontAwesome, $icon: "\f0da") {
+    margin: 0;
+    list-style: none;
+    padding: 0 0 0 $width;
+
+    > li {
+        padding: 0;
+
+        &::before {
+            color: $color;
+            content: $icon;
+            display: inline-block;
+            font-family: $font;
+            margin-left: -$width;
+            width: $width;
+        }
+
+    }
+}
+
+@mixin flex-grid-row ($margin: $padding-vertical,
+    $spacer: $spacer,
+    $margin-horizontal: false,
+    $stretch: true,
+    $responsive: false
+    ){
+    
+    justify-content: center;
+    align-items: center;
+    align-content: center;
+    
+    $margin: inherit-list($margin);
+    
+    @if $responsive {
+        >.inner {
+            @include media-constructor(margin, extend-constructor('calc((', $margin, ' / 2) * -1)'));
+            // calc for IE11, modern browsers width: auto
+            @include media-constructor(width, extend-constructor('calc(100% + ', $margin, ')'));
+            @if $stretch {
+                align-content: stretch;
+                align-items: stretch;
+            }
+        }
+        @if $margin-horizontal {
+            &:not(.wv-boxed)>.inner {
+                
+                // calc for IE11, modern browsers width: auto
+                width: calc(100% - #{nth(nth($margin,1), 1)});
+                margin: nth(nth($margin, 1), 1) / 2;
+                //Tablet
+                @media screen and(max-width: $breakpoint-md-max) {
+                    // calc for IE11, modern browsers width: auto
+                    width: if(nth(nth($margin, 2), 1)==0, 100%, calc(100% - #{nth(nth($margin,2), 1)}));
+                    margin: nth(nth($margin, 2), 1) / 2;
+                }
+                //Mobile
+                @media screen and(max-width: $breakpoint-xs-max) {
+                    // calc for IE11, modern browsers width: auto
+                    width: if(nth(nth($margin, 3), 1)==0, 100%, calc(100% - #{nth(nth($margin,3), 1)}));
+                    margin: nth(nth($margin, 3), 1) / 2;
+                }
+            }
+        }
+        &.wv-boxed>.inner {
+            @include media-constructor(max-width, extend-constructor('calc(', inherit-list($content-width), ' +'), extend-constructor('', $margin, ')'));
+        }
+        // remove padding left and right if element is inside another container (already set on parent)
+        .ed-container &,
+        .ed-reference-container &,
+        .ed-collection-container &,
+        .ed-collection-item & {
+            >.inner {
+                padding: 0;
+                max-width: none;
+            }
+        }
+    }
+    
+    @else{
+        >.inner {
+            @include media-constructor(margin, extend-constructor('calc(', $margin, ' * -1)'));
+            // calc for IE11, modern browsers width: auto
+            @include media-constructor(width, extend-constructor('calc(100% + 2 * ', $margin, ')'));
+            @if $stretch {
+                align-content: stretch;
+                align-items: stretch;
+            }
+        }
+        @if $margin-horizontal {
+            &:not(.wv-boxed)>.inner {
+                
+                // calc for IE11, modern browsers width: auto
+                width: calc(100% - 2 * #{nth(nth($margin,1), 1)});
+                margin: nth(nth($margin, 1), 1) nth(nth($margin, 1), 1);
+                // dont apply margin horizontal for breakpoint sm
+                @media screen and (max-width: $breakpoint-sm-max) {
+                    width: calc(100% + 2 * #{nth(nth($margin,1), 1)} - #{nth(nth(inherit-list($spacer), 1), 1)} * 2);
+                    margin: nth(nth($margin, 1), 1) nth(nth($margin, 1), 1) * -1;
+                    // remove spacer when margin is 0
+                    @if nth(nth($margin, 1), 1) ==0 {
+                        width: 100%;
+                    }
+                }
+            }
+        }
+        &.wv-boxed>.inner {
+            @include media-constructor(max-width, extend-constructor('calc(', inherit-list($content-width), ' +'), extend-constructor('2 * ', $margin, ')'));
+        }
+        // remove padding left and right if element is inside another container (already set on parent)
+        .ed-container &,
+        .ed-reference-container &,
+        .ed-collection-container &,
+        .ed-collection-item & {
+            >.inner {
+                padding: 0;
+                max-width: none;
+            }
+        }  
+    }
+}
+
+@mixin flex-grid-column(
+  $margin: $padding-vertical,
+  $grow: true,
+  $columns-xs: 1,
+  $columns-sm: 2,
+  $columns-lg: 3,
+  $columns: null,
+  $max-width: false,
+  $ie: false
+  ){
+    
+  $margin: inherit-list($margin);
+  $grow: inherit-list($grow);
+  
+  //When Responsive
+  @if $columns != null{
+    $columns-lg: nth(nth(inherit-list($columns), 1), 1);
+    $columns-sm: nth(nth(inherit-list($columns), 2), 1);
+    $columns-xs: nth(nth(inherit-list($columns), 3), 1);
+    
+    margin: nth(nth($margin, 1), 1) / 2;
+    flex-basis: if(nth(nth($margin, 1), 1) !=0, calc(#{100% / $columns-lg} - #{nth(nth($margin,1), 1)}), 100% / $columns-lg);
+    // grow and shrink separate for IE11
+    flex-grow: if(nth(nth($grow, 1), 1), 1, 0);
+    flex-shrink: 1;
+    // force-max width for feature shadows, we need to give the container overflow: visible
+    @if $max-width {
+      max-width: if(nth(nth($grow, 1), 1), 100%, if(nth(nth($margin, 1), 1) !=0, calc(#{100% / $columns-lg} - #{nth(nth($margin, 1), 1)}), 100% / $columns-lg));
+    }
+    
+    @media screen and (max-width: $breakpoint-md-max) {
+      margin: nth(nth($margin, 2),1) / 2;
+      flex-basis: if(nth(nth($margin, 2), 1) !=0, calc(#{100% / $columns-sm} - #{nth(nth($margin,2), 1)}), 100% / $columns-sm);
+      // grow and shrink separate for IE11
+      flex-grow: if(nth(nth($grow, 2), 1), 1, 0);
+      // force-max width for feature shadows, we need to give the container overflow: visible   
+      @if $max-width {
+        max-width: if(nth(nth($grow, 2), 1), 100%, if(nth(nth($margin, 2), 1) !=0, calc(#{100% / $columns-sm} - #{nth(nth($margin, 2), 1)}), 100% / $columns-sm));
+      }
+    }
+    
+    @media screen and (max-width: $breakpoint-xs-max) {
+      margin: nth(nth($margin, 3), 1) / 2;
+      flex: if(nth(nth($grow, 3), 1), 1, 0) 1 if(nth(nth($margin, 3), 1) !=0, calc(#{100% / $columns-xs} - #{nth(nth($margin,3), 1)}), 100% / $columns-xs);
+      // grow and shrink separate for IE11
+      flex-grow: if(nth(nth($grow, 3), 1), 1, 0);
+      // force-max width for feature shadows, we need to give the container overflow: visible
+      @if $max-width {
+        max-width: if(nth(nth($grow, 3), 1), 100%, if(nth(nth($margin, 3), 1) !=0, calc(#{100% / $columns-xs} - #{nth(nth($margin, 3), 1)}), 100% / $columns-xs));
+      }
+    }
+    
+    // because IE11 cant do flex and box-sizing border-box at the same time apply max width
+    @if $ie {
+      @media screen and (-ms-high-contrast:active),(-ms-high-contrast:none) and (min-width: $breakpoint-md) {
+        flex-grow: 0;
+        max-width: if(nth(nth($margin, 1), 1) !=0, calc(#{100% / $columns-lg} - #{nth(nth($margin,1), 1)}), #{100%/$columns-lg});
+      }
+    }
+  }
+  
+  //When not Responsive
+  @else{
+    margin: nth(nth($margin, 1), 1);
+    flex-basis: if(nth(nth($margin, 1), 1) !=0, calc(#{100% / $columns-lg} - 2 * #{nth(nth($margin,1), 1)}), 100% / $columns-lg);
+    // grow and shrink separate for IE11
+    flex-grow: if(nth(nth($grow, 1), 1), 1, 0);
+    flex-shrink: 1;
+    // force-max width for feature shadows, we need to give the container overflow: visible
+    @if $max-width {
+      max-width: if(nth(nth($grow, 1), 1), 100%, if(nth(nth($margin, 1), 1) !=0, calc(#{100% / $columns-lg} - 2 * #{nth(nth($margin, 1), 1)}), 100% / $columns-lg));
+    }
+    
+    @media screen and (max-width: $breakpoint-md-max) {
+      margin: nth(nth($margin, 2),1);
+      flex-basis: if(nth(nth($margin, 2), 1) !=0, calc(#{100% / $columns-sm} - 2 * #{nth(nth($margin,2), 1)}), 100% / $columns-sm);
+      // grow and shrink separate for IE11
+      flex-grow: if(nth(nth($grow, 2), 1), 1, 0);
+      // force-max width for feature shadows, we need to give the container overflow: visible   
+      @if $max-width {
+        max-width: if(nth(nth($grow, 2), 1), 100%, if(nth(nth($margin, 2), 1) !=0, calc(#{100% / $columns-sm} - 2 * #{nth(nth($margin, 2), 1)}), 100% / $columns-sm));
+      }
+    }
+    
+    @media screen and (max-width: $breakpoint-xs-max) {
+      margin: nth(nth($margin, 3), 1);
+      flex: if(nth(nth($grow, 3), 1), 1, 0) 1 if(nth(nth($margin, 3), 1) !=0, calc(#{100% / $columns-xs} - 2 * #{nth(nth($margin,3), 1)}), 100% / $columns-xs);
+      // grow and shrink separate for IE11
+      flex-grow: if(nth(nth($grow, 3), 1), 1, 0);
+      // force-max width for feature shadows, we need to give the container overflow: visible
+      @if $max-width {
+        max-width: if(nth(nth($grow, 3), 1), 100%, if(nth(nth($margin, 3), 1) !=0, calc(#{100% / $columns-xs} - 2 * #{nth(nth($margin, 3), 1)}), 100% / $columns-xs));
+      }
+    }
+    
+    // because IE11 cant do flex and box-sizing border-box at the same time apply max width
+    @if $ie {
+      @media screen and (-ms-high-contrast:active),(-ms-high-contrast:none) and (min-width: $breakpoint-md) {
+        flex-grow: 0;
+        max-width: if(nth(nth($margin, 1), 1) !=0, calc(#{100% / $columns-lg} - 2 * #{nth(nth($margin,1), 1)}), #{100%/$columns-lg});
+      }
+    }
+  }
+}
+
+@mixin button-hover-style(
+	$padding: $spacer, 
+	$font-size: $fz-base-all,
+	$hover-style: box-fade, 
+	$color: $text-color,
+	$color-active: $color-primary, 
+	$hover-border-size: 1px, 
+	$hover-border-radius: 0px, 
+	$selector: '&', 
+	$selector-hover: '&:hover, &.active'
+) {
+	#{$selector} {
+		padding: $padding;
+		@include media-constructor(font-size, $font-size);
+	}
+
+	@if $hover-style != none and $hover-style != text-color and $hover-style != box-fade {
+		#{$selector} {
+			&:before,
+			&:after {
+				content: '';
+				position: absolute;
+				display: block;
+				z-index: -1;
+				transition: all .3s ease;
+			
+				@if type-of($color-active) == color { background: $color-active; }
+				@else  { background: $color; }
+			}
+		}
+	}
+	@if $hover-style == none {
+		#{$selector-hover} { color: $color; }
+	}
+	@if $hover-style == text-color {
+		#{$selector-hover} {
+			@if type-of($color-active) == color { color: $color-active; }
+			@else  { color: $color; }
+		}
+	}
+
+
+	@if $hover-style == box-fade {
+		#{$selector} {
+			@if length(nth($hover-border-radius, 1)) == 4 {
+				@if nth(nth($hover-border-radius, 1), 1) > 0 or  nth(nth($hover-border-radius, 1),2) > 0 or nth(nth($hover-border-radius, 1),3) > 0 or nth(nth($hover-border-radius, 1),4) > 0 {
+					border-radius: $hover-border-radius;
+					display: block;
+					overflow: hidden;
+				}
+			}
+			@else if length(nth($hover-border-radius,1)) == 1 {
+				@if nth($hover-border-radius,1) > 0 {
+					border-radius: $hover-border-radius;
+					display: block;
+					overflow: hidden;
+				}
+			}
+		}
+	
+		#{$selector-hover} {
+			@if type-of($color-active) == color { background: $color-active; }
+			@else  { background: $color; }
+		}
+	}
+
+	@if $hover-style == box-vertical {
+		#{$selector}:after {
+			top: 50%;
+			left: 50%;
+			width: 100%;
+			height: 0;
+			transform: translate(-50%,-50%);
+		
+			@if length(nth($hover-border-radius, 1)) == 4 {
+				@if nth(nth($hover-border-radius, 1), 1) > 0 or  nth(nth($hover-border-radius, 1),2) > 0 or nth(nth($hover-border-radius, 1),3) > 0 or nth(nth($hover-border-radius, 1),4) > 0 { border-radius: $hover-border-radius; }
+			}
+			@else if length(nth($hover-border-radius,1)) == 1 {
+				@if nth($hover-border-radius,1) > 0 { border-radius: $hover-border-radius; }
+			}
+		}
+	
+		#{$selector-hover} {
+			&:after { height: 100%; }
+		}
+	}
+
+	@if $hover-style == box-horizontal {
+		#{$selector}:after {
+			top: 50%;
+			left: 50%;
+			width: 0;
+			height: 100%;
+			transform: translate(-50%,-50%);
+		
+			@if length(nth($hover-border-radius, 1)) == 4 {
+				@if nth(nth($hover-border-radius, 1), 1) > 0 or  nth(nth($hover-border-radius, 1),2) > 0 or nth(nth($hover-border-radius, 1),3) > 0 or nth(nth($hover-border-radius, 1),4) > 0 { border-radius: $hover-border-radius; }
+			}
+			@else if length(nth($hover-border-radius,1)) == 1 {
+				@if nth($hover-border-radius,1) > 0 { border-radius: $hover-border-radius; }
+			}
+		}
+	
+		#{$selector-hover} {
+			&:after { width: 100%; }
+		}
+	}
+
+	@if $hover-style == box-top {
+		#{$selector}:after {
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 0;
+		
+			@if length(nth($hover-border-radius, 1)) == 4 {
+				@if nth(nth($hover-border-radius, 1), 1) > 0 or  nth(nth($hover-border-radius, 1),2) > 0 or nth(nth($hover-border-radius, 1),3) > 0 or nth(nth($hover-border-radius, 1),4) > 0 { border-radius: $hover-border-radius; }
+			}
+			@else if length(nth($hover-border-radius,1)) == 1 {
+				@if nth($hover-border-radius,1) > 0 { border-radius: $hover-border-radius; }
+			}
+		}
+	
+		#{$selector-hover} {
+			&:after { height: 100%; }
+		}
+	}
+
+	@if $hover-style == box-bottom {
+		#{$selector}:after {
+			bottom: 0;
+			left: 0;
+			width: 100%;
+			height: 0;
+		
+			@if length(nth($hover-border-radius, 1)) == 4 {
+				@if nth(nth($hover-border-radius, 1), 1) > 0 or  nth(nth($hover-border-radius, 1),2) > 0 or nth(nth($hover-border-radius, 1),3) > 0 or nth(nth($hover-border-radius, 1),4) > 0 { border-radius: $hover-border-radius; }
+			}
+			@else if length(nth($hover-border-radius,1)) == 1 {
+				@if nth($hover-border-radius,1) > 0 { border-radius: $hover-border-radius; }
+			}
+		}
+	
+		#{$selector-hover} {
+			&:after { height: 100%; }
+		}
+	}
+
+
+
+	@if $hover-style == box-left {
+		#{$selector}:after {
+			top: 0;
+			left: 0;
+			height: 100%;
+			width: 0;
+		
+			@if length(nth($hover-border-radius, 1)) == 4 {
+				@if nth(nth($hover-border-radius, 1), 1) > 0 or  nth(nth($hover-border-radius, 1),2) > 0 or nth(nth($hover-border-radius, 1),3) > 0 or nth(nth($hover-border-radius, 1),4) > 0 { border-radius: $hover-border-radius; }
+			}
+			@else if length(nth($hover-border-radius,1)) == 1 {
+				@if nth($hover-border-radius,1) > 0 { border-radius: $hover-border-radius; }
+			}
+		}
+	
+		#{$selector-hover} {
+			&:after { width: 100%; }
+		}
+	}
+
+	@if $hover-style == box-right {
+		#{$selector}:after {
+			top: 0;
+			right: 0;
+			height: 100%;
+			width: 0;
+		
+			@if length(nth($hover-border-radius, 1)) == 4 {
+				@if nth(nth($hover-border-radius, 1), 1) > 0 or  nth(nth($hover-border-radius, 1),2) > 0 or nth(nth($hover-border-radius, 1),3) > 0 or nth(nth($hover-border-radius, 1),4) > 0 { border-radius: $hover-border-radius; }
+			}
+			@else if length(nth($hover-border-radius,1)) == 1 {
+				@if nth($hover-border-radius,1) > 0 { border-radius: $hover-border-radius; }
+			}
+		}
+	
+		#{$selector-hover} {
+			&:after { width: 100%; }
+		}
+	}
+
+	@if $hover-style == box-zoom {
+		#{$selector}:after {
+			top: 50%;
+			left: 50%;
+			height: 0;
+			width: 0;
+			transform: translate(-50%,-50%);
+		
+			@if length(nth($hover-border-radius, 1)) == 4 {
+				@if nth(nth($hover-border-radius, 1), 1) > 0 or  nth(nth($hover-border-radius, 1),2) > 0 or nth(nth($hover-border-radius, 1),3) > 0 or nth(nth($hover-border-radius, 1),4) > 0 { border-radius: $hover-border-radius; }
+			}
+			@else if length(nth($hover-border-radius,1)) == 1 {
+				@if nth($hover-border-radius,1) > 0 { border-radius: $hover-border-radius; }
+			}
+		}
+	
+		#{$selector-hover} {
+			&:after {
+				height: 100%;
+				width: 100%;
+			}
+		}
+	}
+
+	@if $hover-style == border {
+		#{$selector}:before {
+			height: 100%;
+			width: 100%;
+			top: 0;
+			left: 0;
+			border: $hover-border-size solid if(type-of($color-active) == color, $color-active, $color);
+			background: none;
+			opacity: 0;
+		
+			@if length(nth($hover-border-radius, 1)) == 4 {
+				@if nth(nth($hover-border-radius, 1), 1) > 0 or  nth(nth($hover-border-radius, 1),2) > 0 or nth(nth($hover-border-radius, 1),3) > 0 or nth(nth($hover-border-radius, 1),4) > 0 { border-radius: $hover-border-radius; }
+			}
+			@else if length(nth($hover-border-radius,1)) == 1 {
+				@if nth($hover-border-radius,1) > 0 { border-radius: $hover-border-radius; }
+			}
+		}
+	
+		#{$selector-hover} {
+			color: $color;
+		
+			&:before { opacity: 1; }
+		}
+	}
+
+	@if $hover-style == border-vertical {
+		#{$selector} {
+			padding-left: 0;
+			padding-right: 0;
+		
+			&:before,
+			&:after {
+				// Represents the border
+				height: $hover-border-size;
+				width: 100%;
+				transform: translateY(-$padding);
+				top: 0;
+				left: 0;
+				opacity: 0;
+			
+				@if length(nth($hover-border-radius, 1)) == 4 {
+					@if nth(nth($hover-border-radius, 1), 1) > 0 or  nth(nth($hover-border-radius, 1),2) > 0 or nth(nth($hover-border-radius, 1),3) > 0 or nth(nth($hover-border-radius, 1),4) > 0 {
+						border-radius: $hover-border-radius;
+						display: box;
+					}
+				}
+				@else if length(nth($hover-border-radius,1)) == 1 {
+					@if nth($hover-border-radius,1) > 0 {
+						border-radius: $hover-border-radius;
+						display: box;
+					}
+				}
+			}
+		
+			&:after {
+				top: auto;
+				bottom: 0;
+				transform: translateY($padding);
+			}
+		}
+	
+		#{$selector-hover} {
+			color: $color;
+		
+			&:before,
+			&:after {
+				opacity: 1;
+				transform: translateY(0);
+			
+				@if type-of($color-active) == "color" { background: $color-active; }
+			}
+		
+			&:after {
+				top: auto;
+				transform: translateY(0);
+			}
+		}
+	}
+
+	@if $hover-style == border-horizontal {
+		#{$selector} {
+			padding-top: 0;
+			padding-bottom: 0;
+		
+			&:before,
+			&:after {
+				// Represents the border
+				width: $hover-border-size;
+				height: 100%;
+				transform: translateX(-$padding);
+				left: 0;
+				top: 0;
+				opacity: 0;
+			
+				@if length(nth($hover-border-radius, 1)) == 4 {
+					@if nth(nth($hover-border-radius, 1), 1) > 0 or  nth(nth($hover-border-radius, 1),2) > 0 or nth(nth($hover-border-radius, 1),3) > 0 or nth(nth($hover-border-radius, 1),4) > 0 { border-radius: $hover-border-radius; }
+				}
+				@else if length(nth($hover-border-radius,1)) == 1 {
+					@if nth($hover-border-radius,1) > 0 { border-radius: $hover-border-radius; }
+				}
+			}
+		
+			&:after {
+				left: auto;
+				right: 0;
+				transform: translateX($padding);
+			}
+		}
+	
+		#{$selector-hover} {
+			color: $color;
+		
+			&:before,
+			&:after {
+				opacity: 1;
+				transform: translateX(0);
+			
+				@if type-of($color-active) == "color" { background: $color-active; }
+			}
+		
+			&:after {
+				left: auto;
+				right: 0;
+			}
+		}
+	}
+
+	@if $hover-style == border-top {
+		#{$selector} {
+			padding: $padding 0;
+		
+			&:before {
+				// Represents the border
+				height: $hover-border-size;
+				width: 100%;
+				transform: translateY(-$padding);
+				top: 0;
+				left: 0;
+				opacity: 0;
+			
+				@if length(nth($hover-border-radius, 1)) == 4 {
+					@if nth(nth($hover-border-radius, 1), 1) > 0 or  nth(nth($hover-border-radius, 1),2) > 0 or nth(nth($hover-border-radius, 1),3) > 0 or nth(nth($hover-border-radius, 1),4) > 0 { border-radius: $hover-border-radius; }
+				}
+				@else if length(nth($hover-border-radius,1)) == 1 {
+					@if nth($hover-border-radius,1) > 0 { border-radius: $hover-border-radius; }
+				}
+			}
+		}
+	
+		#{$selector-hover} {
+			color: $color;
+		
+			&:before {
+				opacity: 1;
+				transform: translateY(0);
+			
+				@if type-of($color-active) == "color" { background: $color-active; }
+			}
+		}
+	}
+
+	@if $hover-style == border-bottom {
+		#{$selector} {
+			padding: $padding 0;
+		
+			&:before {
+				// Represents the border
+				height: $hover-border-size;
+				width: 100%;
+				bottom: 0;
+				transform: translateY($padding);
+				left: 0;
+				opacity: 0;
+			
+				@if length(nth($hover-border-radius, 1)) == 4 {
+					@if nth(nth($hover-border-radius, 1), 1) > 0 or  nth(nth($hover-border-radius, 1),2) > 0 or nth(nth($hover-border-radius, 1),3) > 0 or nth(nth($hover-border-radius, 1),4) > 0 { border-radius: $hover-border-radius; }
+				}
+				@else if length(nth($hover-border-radius,1)) == 1 {
+					@if nth($hover-border-radius,1) > 0 { border-radius: $hover-border-radius; }
+				}
+			}
+		}
+	
+		#{$selector-hover} {
+			color: $color;
+		
+			&:before {
+				opacity: 1;
+				transform: translateY(0);
+			
+				@if type-of($color-active) == "color" { background: $color-active; }
+			}
+		}
+	}
+}
+
+// Combination of grey disabled-state and orange info-box
+@mixin info-box($content:none, $target:"", $opacity: 1, $disabled: false){
+    .edit & #{$target}{
+        position: relative;
+        
+    	&:before {
+    		position: absolute;
+		    max-width: 100%;
+    		z-index: 1;
+    		top: 0;
+    		left: -1px;
+    		display: block;
+    		background: #f58220;
+    		color: #fff;
+    		padding: 4px;
+    		font-size: 12px;
+    		line-height: 1;
+    		font-family: Helvetica, sans-serif;
+		    white-space: nowrap;
+	        content: $content;
+	        opacity: $opacity;
+    	}
+    
+    	&:hover:before { display: none; }
+    	
+    	//For disabled-state: .hide-lg, .hide-md, .hide-sm, start-at, expired
+    	@if $disabled{
+	        filter: grayscale(100%);
+	        opacity: 0.4;
+    	}
+    	@else{
+            border: 1px solid #f58220;
+            // Commented for now for testing purposes. Remove completely if not necessary.
+            //padding: 1rem;
+    	}
+    }
+}
+
+//Legacy fix for old blog-preset
+@mixin disabled-state(){
+    @at-root .pagination.columns-box.hide a{
+        @include info-box($disabled: true);
+    }
+}
+
+@mixin preset-headline-color($background) {
+
+    h1,
+    .h1,
+    h2,
+    .h2,
+    h3,
+    .h3,
+    h4,
+    .h4,
+    h5,
+    .h5,
+    h6,
+    .h6 {
+        color: get-color-headlines($background);
+    }
+
+    h1,
+    .h1 {
+        color: get-color-h1($background);
+    }
+
+    h2,
+    .h2 {
+        color: get-color-h2($background);
+    }
+
+    h3,
+    .h3 {
+        color: get-color-h3($background);
+    }
+
+    h4,
+    .h4 {
+        color: get-color-h4($background);
+    }
+
+    h5,
+    .h5 {
+        color: get-color-h5($background);
+    }
+
+    h6,
+    .h6 {
+        color: get-color-h6($background);
+    }
+}
+
+
+@mixin orange-badge($content, $padding: 0rem) {
+    content: $content;
+    display: inline-block;
+    background: #f58220;
+    color: #fff;
+    padding: 4px;
+    font-size: 12px;
+    font-family: Helvetica, sans-serif;
+}
+
+// Media query constructor for simple property:value; outputs
+@mixin media-constructor($property, $values...) {
+
+    // Initialize variables
+    $desktop: ();
+    $tablet: ();
+    $mobile: ();
+
+    // Check if not a single nested list like $example: (1 2 3 4);
+    // The nth() is important because apparently in Sass arglists are nested lists
+    @if length(nth($values, 1)) < 4 {
+
+        // Go through values in list and assign each to a breakpoint.
+        // Tablet and mobile will receive a downward compatible value
+        // if none are given initially.
+        @each $value in $values {
+            $desktop: append($desktop, nth($value, 1));
+            $tablet: append($tablet, nth(inherit-list($value), 2));
+            $mobile: append($mobile, nth(inherit-list($value), 3));
+        }
+
+        // Return desktop value
+        #{$property}: $desktop;
+
+        // Return tablet value if it's not the same as desktop
+        @if $tablet !=$desktop {
+            @media screen and (max-width: $breakpoint-md-max) {
+                #{$property}: $tablet;
+            }
+        }
+
+        // Return mobile value if it's not the same as tablet
+        @if $mobile !=$tablet {
+            @media screen and (max-width: $breakpoint-xs-max) {
+                #{$property}: $mobile;
+            }
+        }
+    }
+
+    // Return if a single nested list like $example: (1 2 3 4)
+    @else {
+        #{$property}: $values;
+    }
+}
+
+// Media query constructor specifically for the menu with the extra breakpoint
+@mixin media-constructor-menu(
+	$property, 
+	$breakpoint, 
+	$values...
+) {
+	// Initialize variables
+	$desktop: ();
+	$tablet: ();
+	$mobile: ();
+
+	// Check if not a single nested list like $example: (1 2 3 4); // The nth() is important because apparently in Sass arglists are nested lists
+	@if length(nth($values, 1)) < 4 {
+		// Go through values in list and assign each to a breakpoint. // Tablet and mobile will receive a downward compatible value // if none are given initially.
+		@each $value in $values {
+			$desktop: append($desktop, nth($value, 1));
+			$tablet: append($tablet, nth(inherit-list($value), 2));
+			$mobile: append($mobile, nth(inherit-list($value), 3));
+		}
+	
+		// Return desktop value
+		#{$property}: $desktop;
+		// Return tablet value if it's not the same as desktop
+		@if $tablet !=$desktop {
+			@media screen and (max-width: $breakpoint) {
+				#{$property}: $tablet;
+			}
+		}
+	
+		// Return mobile value if it's not the same as tablet
+		@if $mobile !=$tablet {
+			@media screen and (max-width: $breakpoint-xs-max) {
+				#{$property}: $mobile;
+			}
+		}
+	}
+
+	// Return if a single nested list like $example: (1 2 3 4)
+	@else  { #{$property}: $values; }
+}
+// Defaults
+//
+// Normalization of HTML elements, manually forked from Normalize.css to remove
+// styles targeting irrelevant browsers while applying new styles.
+//
+// Normalize is licensed MIT. https://github.com/necolas/normalize.css
+
+
+// Document
+//
+// 1. Change from `box-sizing: content-box` so that `width` is not affected by `padding` or `border`.
+// 2. Change the default font family in all browsers.
+// 3. Correct the line height in all browsers.
+// 4. Prevent adjustments of font size after orientation changes in IE on Windows Phone and in iOS.
+// 5. Setting @viewport causes scrollbars to overlap content in IE11 and Edge, so
+//    we force a non-overlapping, non-auto-hiding scrollbar to counteract.
+// 6. Change the default tap highlight to be completely transparent in iOS.
+
+html {
+    box-sizing: border-box; // 1
+    font-family: sans-serif; // 2
+    line-height: 1.15; // 3
+    -ms-text-size-adjust: 100%; // 4
+    -webkit-text-size-adjust: 100%; // 4
+    -ms-overflow-style: scrollbar; // 5
+    -webkit-tap-highlight-color: rgba(0,0,0,0); // 6
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: inherit; // 1
+}
+
+// IE10+ doesn't honor `<meta name="viewport">` in some cases.
+@at-root {
+    @-ms-viewport { width: device-width; }
+}
+
+// Reset margins on paragraphs
+p {
+    margin-top: 0;
+}
+
+// Suppress the focus outline on elements that cannot be accessed via keyboard.
+// This prevents an unwanted focus outline from appearing around elements that
+// might still respond to pointer events.
+//
+// Credit: https://github.com/suitcss/base
+[tabindex="-1"]:focus {
+    outline: none !important;
+}
+
+
+// Content grouping
+//
+// 1. Add the correct box sizing in Firefox.
+// 2. Show the overflow in Edge and IE.
+
+hr {
+    box-sizing: content-box; // 1
+    height: 0; // 1
+    overflow: visible; // 2
+    border: none;
+}
+
+
+// Reset margins on paragraphs
+p {
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+// Abbreviations
+//
+// 1. Remove the bottom border in Firefox 39-.
+// 2. Add the correct text decoration in Chrome, Edge, IE, Opera, and Safari.
+// 3. Add explicit cursor to indicate changed behavior.
+// 4. Duplicate behavior to the data-* attribute for our tooltip plugin
+
+abbr[title],
+abbr[data-original-title] { // 4
+    text-decoration: underline; // 2
+    text-decoration: underline dotted; // 2
+    cursor: help; // 3
+    border-bottom: 0; // 1
+}
+
+address {
+    font-style: normal;
+    line-height: inherit;
+}
+
+ol,
+ul,
+dl {
+    // margin-bottom: $spacer;
+    margin: 0;
+}
+
+ol ol,
+ul ul,
+ol ul,
+ul ol {
+    margin-bottom: 0;
+}
+
+// Reset Padding for ol + position list-style inside of box model
+ol {
+  padding: 0;
+  li {
+    list-style-position: inside;
+  }
+}
+
+dt {
+    font-weight: $fw-bold;
+}
+
+dd {
+    margin-bottom: ($spacer / 2);
+    margin-left: 0; // Undo browser default
+}
+
+blockquote {
+    margin: 0 0 $spacer;
+}
+
+dfn {
+    font-style: italic; // Add the correct font style in Android 4.3-
+}
+
+b,
+strong {
+    font-weight: $fw-bold; // Add the correct font weight in Chrome, Edge, and Safari
+}
+
+small {
+    font-size: 80%; // Add the correct font size in all browsers
+}
+
+//
+// Prevent `sub` and `sup` elements from affecting the line height in
+// all browsers.
+//
+
+sub,
+sup {
+    position: relative;
+    font-size: 75%;
+    line-height: 0;
+    vertical-align: baseline;
+}
+
+sub { bottom: -.25em; }
+sup { top: -.5em; }
+
+
+//
+// Links
+//
+
+a {
+    color: $link-color;
+    text-decoration: $link-decoration;
+    background-color: transparent; // Remove the gray background on active links in IE 10.
+    -webkit-text-decoration-skip: objects; // Remove gaps in links underline in iOS 8+ and Safari 8+.
+    transition: $link-transition-base;
+
+    &:hover {
+        color: $link-hover-color;
+        text-decoration: $link-hover-decoration;
+    }
+}
+
+// And undo these styles for placeholder links/named anchors (without href)
+// which have not been made explicitly keyboard-focusable (without tabindex).
+// It would be more straightforward to just use a[href] in previous block, but that
+// causes specificity issues in many other styles that are too complex to fix.
+// See https://github.com/twbs/bootstrap/issues/19402
+
+a:not([href]):not([tabindex]) {
+    color: inherit;
+    text-decoration: none;
+
+    &:hover {
+        color: inherit;
+        text-decoration: none;
+    }
+
+    &:focus {
+        outline: 0;
+    }
+}
+
+
+//
+// Code
+//
+
+pre,
+code,
+kbd,
+samp {
+    font-family: monospace, monospace; // Correct the inheritance and scaling of font size in all browsers.
+    font-size: 1em; // Correct the odd `em` font sizing in all browsers.
+}
+
+pre {
+    // Remove browser default top margin
+    margin-top: 0;
+    // Reset browser default of `1em` to use `rem`s
+    margin-bottom: $spacer;
+    // Don't allow content to break outside
+    overflow: auto;
+}
+
+
+//
+// Figures
+//
+
+figure {
+    // Apply a consistent margin strategy (matches our type styles).
+    margin: 0;
+}
+
+
+//
+// Images and content
+//
+
+img {
+    vertical-align: middle;
+    border-style: none; // Remove the border on images inside links in IE 10-.
+}
+
+// Improves quality of scaled images in Chrome
+img, .background-image-holder {
+    image-rendering: -webkit-optimize-contrast;
+}
+
+svg:not(:root) {
+    overflow: hidden; // Hide the overflow in IE
+}
+
+
+// Avoid 300ms click delay on touch devices that support the `touch-action` CSS property.
+//
+// In particular, unlike most other browsers, IE11+Edge on Windows 10 on touch devices and IE Mobile 10-11
+// DON'T remove the click delay when `<meta name="viewport" content="width=device-width">` is present.
+// However, they DO support removing the click delay via `touch-action: manipulation`.
+// See:
+// * https://v4-alpha.getbootstrap.com/content/reboot/#click-delay-optimization-for-touch
+// * http://caniuse.com/#feat=css-touch-action
+// * https://patrickhlauke.github.io/touch/tests/results/#suppressing-300ms-delay
+
+a,
+area,
+button,
+[role="button"],
+input,
+label,
+select,
+summary,
+textarea {
+    touch-action: manipulation;
+}
+
+::-webkit-input-placeholder, ::-moz-placeholder, :-ms-input-placeholder, :-moz-placeholder {
+    color: $text-color;
+}
+
+//
+// Tables
+//
+
+table {
+    border-collapse: collapse; // Prevent double borders
+}
+
+caption {
+    padding-top: $table-cell-padding;
+    padding-bottom: $table-cell-padding;
+    color: $text-muted;
+    text-align: left;
+    caption-side: bottom;
+}
+
+th {
+    // Matches default `<td>` alignment
+    text-align: left;
+}
+
+
+//
+// Forms
+//
+
+label {
+    // Allow labels to use `margin` for spacing.
+    display: inline-block;
+    margin-bottom: .5rem;
+}
+
+// Work around a Firefox/IE bug where the transparent `button` background
+// results in a loss of the default `button` focus styles.
+//
+// Credit: https://github.com/suitcss/base/
+button:focus {
+    outline: 1px dotted;
+    outline: 5px auto -webkit-focus-ring-color;
+}
+
+input,
+button,
+select,
+optgroup,
+textarea {
+    margin: 0; // Remove the margin in Firefox and Safari
+    font-family: inherit;
+    font-size: inherit;
+    line-height: inherit;
+}
+
+button,
+input {
+    overflow: visible; // Show the overflow in Edge
+}
+
+button,
+select {
+    text-transform: none; // Remove the inheritance of text transform in Firefox
+}
+
+// 1. Prevent a WebKit bug where (2) destroys native `audio` and `video`
+//    controls in Android 4.
+// 2. Correct the inability to style clickable types in iOS and Safari.
+button,
+html [type="button"], // 1
+[type="reset"],
+[type="submit"] {
+    -webkit-appearance: button; // 2
+}
+
+// Remove inner border and padding from Firefox, but don't restore the outline like Normalize.
+button::-moz-focus-inner,
+[type="button"]::-moz-focus-inner,
+[type="reset"]::-moz-focus-inner,
+[type="submit"]::-moz-focus-inner {
+    padding: 0;
+    border-style: none;
+}
+
+input[type="radio"],
+input[type="checkbox"] {
+    box-sizing: border-box; // 1. Add the correct box sizing in IE 10-
+    padding: 0; // 2. Remove the padding in IE 10-
+
+    // Apply a disabled cursor for radios and checkboxes.
+    //
+    // Note: Neither radios nor checkboxes can be readonly.
+    &:disabled {
+        cursor: $cursor-disabled;
+    }
+}
+
+
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"],
+input[type="month"] {
+    // Remove the default appearance of temporal inputs to avoid a Mobile Safari
+    // bug where setting a custom line-height prevents text from being vertically
+    // centered within the input.
+    // See https://bugs.webkit.org/show_bug.cgi?id=139848
+    // and https://github.com/twbs/bootstrap/issues/11266
+    -webkit-appearance: listbox;
+}
+
+textarea {
+    overflow: auto; // Remove the default vertical scrollbar in IE.
+    // Textareas should really only resize vertically so they don't break their (horizontal) containers.
+    resize: vertical;
+}
+
+fieldset {
+    // Browsers set a default `min-width: min-content;` on fieldsets,
+    // unlike e.g. `<div>`s, which have `min-width: 0;` by default.
+    // So we reset that to ensure fieldsets behave more like a standard block element.
+    // See https://github.com/twbs/bootstrap/issues/12359
+    // and https://html.spec.whatwg.org/multipage/#the-fieldset-and-legend-elements
+    min-width: 0;
+    // Reset the default outline behavior of fieldsets so they don't affect page layout.
+    padding: 0;
+    margin: 0;
+    border: 0;
+}
+
+// 1. Correct the text wrapping in Edge and IE.
+// 2. Correct the color inheritance from `fieldset` elements in IE.
+legend {
+    display: block;
+    width: 100%;
+    max-width: 100%; // 1
+    padding: 0;
+    margin-bottom: ($spacer / 2);
+    font-size: 1.5rem;
+    line-height: inherit;
+    color: inherit; // 2
+    white-space: normal; // 1
+}
+
+progress {
+    vertical-align: baseline; // Add the correct vertical alignment in Chrome, Firefox, and Opera.
+}
+
+// Correct the cursor style of increment and decrement buttons in Chrome.
+[type="number"]::-webkit-inner-spin-button,
+[type="number"]::-webkit-outer-spin-button {
+    height: auto;
+}
+
+[type="search"] {
+    // This overrides the extra rounded corners on search inputs in iOS so that our
+    // `.form-control` class can properly style them. Note that this cannot simply
+    // be added to `.form-control` as it's not specific enough. For details, see
+    // https://github.com/twbs/bootstrap/issues/11586.
+    outline-offset: -2px; // 2. Correct the outline style in Safari.
+    -webkit-appearance: none;
+}
+
+//
+// Remove the inner padding and cancel buttons in Chrome and Safari on macOS.
+//
+
+[type="search"]::-webkit-search-cancel-button,
+[type="search"]::-webkit-search-decoration {
+    -webkit-appearance: none;
+}
+
+//
+// 1. Correct the inability to style clickable types in iOS and Safari.
+// 2. Change font properties to `inherit` in Safari.
+//
+
+::-webkit-file-upload-button {
+    font: inherit; // 2
+    -webkit-appearance: button; // 1
+}
+
+//
+// Correct element displays
+//
+
+output {
+    display: inline-block;
+}
+
+summary {
+    display: list-item; // Add the correct display in all browsers
+}
+
+template {
+    display: none; // Add the correct display in IE
+}
+
+// Always hide an element with the `hidden` HTML attribute (from PureCSS).
+// Needed for proper display in IE 10-.
+[hidden] {
+    display: none !important;
+}
+
+//
+// Typography
+//
+
+// Body
+//
+// 1. Remove the margin in all browsers.
+// 2. As a best practice, apply a default `background-color`.
+
+body {
+    margin: 0; // 1
+    font-family: $font-default;
+    font-weight: $fw-base;
+    color: $text-color;
+    background-color: $color-background;
+    text-transform: $tt-base;
+    font-style: $fs-base;
+    text-align: $ta-base;
+    @include media-constructor(font-size, $fz-base-all);
+    @include media-constructor(line-height, $lh-all);
+    @include media-constructor(letter-spacing, $ls-all);
+}
+
+// Remove top margins from headings
+//
+// By default, `<h1>`-`<h6>` all receive top and bottom margins. We nuke the top
+// margin for easier control within type scales as it avoids margin collapsing.
+
+h1, .h1,
+h2, .h2,
+h3, .h3,
+h4, .h4,
+h5, .h5,
+h6, .h6 {
+    font-family: $ff-headlines;
+    font-weight: $fw-bold;
+    color: $color-primary;
+    margin-top: 0;
+    margin-bottom: $mb-headlines;
+}
+
+h1,
+.h1 {
+    font-family: $ff-h1;
+    color: $color-h1;
+    @include media-constructor(font-size, $fz-h1-all);
+    @include media-constructor(line-height, $lh-h1-all);
+    @include media-constructor(letter-spacing, $ls-h1-all);
+    font-weight: $fw-h1;
+    text-transform: $tt-h1;
+    font-style: $fs-h1;
+    text-decoration: $td-h1;
+    text-align: $ta-h1;
+    margin-bottom: $mb-h1;
+}
+
+h2,
+.h2 {
+    font-family: $ff-h2;
+    color: $color-h2;
+    @include media-constructor(font-size, $fz-h2-all);
+    @include media-constructor(line-height, $lh-h2-all);
+    @include media-constructor(letter-spacing, $ls-h2-all);
+    font-weight: $fw-h2;
+    text-transform: $tt-h2;
+    font-style: $fs-h2;
+    text-decoration: $td-h2;
+    text-align: $ta-h2;
+    margin-bottom: $mb-h2;
+}
+
+h3,
+.h3 {
+    font-family: $ff-h3;
+    color: $color-h3;
+    @include media-constructor(font-size, $fz-h3-all);
+    @include media-constructor(line-height, $lh-h3-all);
+    @include media-constructor(letter-spacing, $ls-h3-all);
+    font-weight: $fw-h3;
+    text-transform: $tt-h3;
+    font-style: $fs-h3;
+    text-decoration: $td-h3;
+    text-align: $ta-h3;
+    margin-bottom: $mb-h3;
+}
+
+h4,
+.h4 {
+    font-family: $ff-h4;
+    color: $color-h4;
+    @include media-constructor(font-size, $fz-h4-all);
+    @include media-constructor(line-height, $lh-h4-all);
+    @include media-constructor(letter-spacing, $ls-h4-all);
+    font-weight: $fw-h4;
+    text-transform: $tt-h4;
+    font-style: $fs-h4;
+    text-decoration: $td-h4;
+    text-align: $ta-h4;
+    margin-bottom: $mb-h4;
+}
+
+h5,
+.h5 {
+    font-family: $ff-h5;
+    color: $color-h5;
+    @include media-constructor(font-size, $fz-h5-all);
+    @include media-constructor(line-height, $lh-h5-all);
+    @include media-constructor(letter-spacing, $ls-h5-all);
+    font-weight: $fw-h5;
+    text-transform: $tt-h5;
+    font-style: $fs-h5;
+    text-decoration: $td-h5;
+    text-align: $ta-h5;
+    margin-bottom: $mb-h5;
+}
+
+
+h6,
+.h6 {
+    font-family: $ff-h6;
+    color: $color-h6;
+    @include media-constructor(font-size, $fz-h6-all);
+    @include media-constructor(line-height, $lh-h6-all);
+    @include media-constructor(letter-spacing, $ls-h6-all);
+    font-weight: $fw-h6;
+    text-transform: $tt-h6;
+    font-style: $fs-h6;
+    text-decoration: $td-h6;
+    text-align: $ta-h6;
+    margin-bottom: $mb-h6;
+}
+// @todo Where is this stuff for the container element? Should be unified
+.ed-section > section,
+.ed-grid > section,
+.ed-reference > section {
+    position: relative;
+
+    &.parallax {
+        overflow: hidden;
+        backface-visibility: hidden;
+    }
+
+    > .inner {
+        position: relative;
+        min-height: 100%;
+
+        &:after {
+            content: '';
+            position: relative;
+            display: block;
+            clear: both;
+        }
+    }
+
+    > .overlay {
+        position: absolute;
+        z-index: 0;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        pointer-events: none;
+    }
+
+    > .background {
+        position: absolute;
+        z-index: 0;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        right: 0;
+
+        /* z-index fix */
+        + .overlay,
+        ~ .inner.container,
+        ~ .ed-element {
+            -webkit-transform: translate3d(0, 0, 0);
+        }
+
+        ~ .ed-element { position: relative; }
+    }
+
+}
+
+.wv-abs {
+    position: absolute;
+}
+
+.wv-fixed {
+    position: fixed;
+}
+
+// slick defaults überschreiben
+.wv-bg.bg-lt, .wv-bg.ed-image.bg-lt .background-image-holder, .ed-image.bg-lt, .wv-bg.ed-slider .ed-slider-item.bg-lt, { background-position: left top; img, { object-position: left top; } }
+.wv-bg.bg-lc, .wv-bg.ed-image.bg-lc .background-image-holder, .ed-image.bg-lc, .wv-bg.ed-slider .ed-slider-item.bg-lc, { background-position: left center; img, { object-position: left center; } }
+.wv-bg.bg-lb, .wv-bg.ed-image.bg-lb .background-image-holder, .ed-image.bg-lb, .wv-bg.ed-slider .ed-slider-item.bg-lb, { background-position: left bottom; img, { object-position: left bottom; } }
+.wv-bg.bg-rt, .wv-bg.ed-image.bg-rt .background-image-holder, .ed-image.bg-rt, .wv-bg.ed-slider .ed-slider-item.bg-rt, { background-position: right top; img, { object-position: right top; } }
+.wv-bg.bg-rc, .wv-bg.ed-image.bg-rc .background-image-holder, .ed-image.bg-rc, .wv-bg.ed-slider .ed-slider-item.bg-rc, { background-position: right center; img, { object-position: right center; } }
+.wv-bg.bg-rb, .wv-bg.ed-image.bg-rb .background-image-holder, .ed-image.bg-rb, .wv-bg.ed-slider .ed-slider-item.bg-rb, { background-position: right bottom; img, { object-position: right bottom; } }
+.wv-bg.bg-ct, .wv-bg.ed-image.bg-ct .background-image-holder, .ed-image.bg-ct, .wv-bg.ed-slider .ed-slider-item.bg-ct, { background-position: center top; img, { object-position: center top; } }
+.wv-bg.bg-cc, .wv-bg.ed-image.bg-cc .background-image-holder, .ed-image.bg-cc, .wv-bg.ed-slider .ed-slider-item.bg-cc, { background-position: center center; img, { object-position: center center; } }
+.wv-bg.bg-cb, .wv-bg.ed-image.bg-cb .background-image-holder, .ed-image.bg-cb, .wv-bg.ed-slider .ed-slider-item.bg-cb, { background-position: center bottom; img, { object-position: center bottom; } }
+
+.wv-bg {
+    position: absolute;
+    z-index: 0;
+    top: auto;
+    right: auto;
+    bottom: auto;
+    left: auto;
+    width: 100%;
+    height: 100%;
+    padding: 0 !important;
+    backface-visibility: hidden;
+
+    &.ed-element {
+        position: absolute;
+        z-index: 0;
+        top: auto;
+        right: auto;
+        bottom: auto;
+        left: auto;
+        width: 100%;
+        height: 100%;
+        padding: 0 !important;
+    }
+
+    &.ed-image {
+        // disable img for now
+        img { display: none; }
+        .resizable-control { display: none; }
+        
+        .background-image-holder {
+            position: absolute;
+            left: 0;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-position: center center;
+        }
+
+        &.wv-tile .background-image-holder {
+            background-size: auto;
+            background-repeat: repeat;
+        }
+    }
+
+    &.ed-slider {
+        max-width: 100%;
+
+        .slider-container {
+            display: block;
+            position: relative;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        .ed-slider-items { height: 100%; }
+
+        .ed-slider-item {
+            position: relative;
+            height: 100%;
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-position: center center;
+        }
+
+        .slick-vertical .ed-slider-item {
+            height: auto;
+        }
+    }
+
+    // new background <img>
+    &.ed-element.ed-slider .ed-slider-item img {
+        opacity: 1;
+        visibility: visible; 
+    }
+
+    .ed-slider-item img {
+        object-fit: cover;
+        object-position: center center;
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;  
+        bottom: 0;
+        width: 100% !important;
+        height: 100%;
+
+		@media (-ms-high-contrast: none), (-ms-high-contrast: active) {
+			display: block;
+			height: auto !important;
+			width: 100% !important;
+			min-height: 100%;
+			min-width: 100%;
+			top: 50%;
+			left: 50%;
+			-ms-transform: translate(-50%,-50%);
+			transform: translate(-50%,-50%);
+		}
+    }
+
+    &.ed-youtube iframe, &.ed-youtube .iframe-holder, &.ed-map .map-canvas {
+        width: 100% !important;
+        height: 100% !important;
+    }
+    
+    &.ed-vimeo {
+        background: #000;
+    }
+}
+
+.wv-bg-fixed {
+    background-attachment: fixed;
+}
+
+.pos-cc {
+    transform: translateX(-50%) translateY(-50%);
+    left: 50%;
+    top: 50%;
+}
+
+.pos-ct {
+    transform: translateX(-50%);
+    left: 50%;
+    top: 0;
+}
+
+.pos-cb {
+    transform: translateX(-50%);
+    bottom: 0;
+    left: 50%;
+}
+
+.pos-lt {
+    left: 0;
+    top: 0;
+}
+
+.pos-lc {
+    transform: translateY(-50%);
+    left: 0;
+    top: 50%;
+}
+
+.pos-lb {
+    bottom: 0;
+    left: 0;
+}
+
+.pos-rt {
+    right: 0;
+    top: 0;
+}
+
+.pos-rc {
+    transform: translateY(-50%);
+    right: 0;
+    top: 50%;
+}
+
+.pos-rb {
+    bottom: 0;
+    right: 0;
+}
+
+.imgLeft {
+    float: left;
+    margin-right: $spacer;
+}
+
+.imgRight {
+    float: right;
+    margin-left: $spacer;
+}
+
+.left {
+    text-align: left;
+}
+
+.center {
+    text-align: center;
+}
+
+.right {
+    text-align: right;
+}
+
+// Slider
+.ed-slider {
+    position: relative;
+}
+
+.slider-controls {
+    opacity: 0;
+}
+
+.slider-container {
+    overflow: hidden;
+}
+
+.ed-slider:hover .slider-controls {
+    opacity: 1;
+}
+
+.slider-controls #prevBtn a, .slider-controls #nextBtn a {
+    color: #dfdfdf;
+    opacity: 0.5;
+    text-decoration: none;
+}
+
+.slider-controls #prevBtn {
+    position: absolute;
+    top: 40%;
+    left: 15px;
+}
+
+.slider-controls #nextBtn {
+    position: absolute;
+    top: 40%;
+    right: 15px;
+}
+
+.ed-slider-items, #content .ed-slider-items {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.ed-slider-items:before,
+.ed-slider-items:after {
+    content: "";
+    display: table;
+}
+
+.ed-slider-items:after {
+    clear: both;
+}
+
+.ed-slider-items li, #content .ed-slider-items li {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    position: relative;
+}
+
+.ed-slider-items li img, #content .ed-slider-items li img { vertical-align: top; max-width: 100%; }
+
+.ed-slider-text {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    padding: 12px;
+    background: rgba(0, 0, 0, 0.5);
+    color: #fff;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.wv-abs { position: absolute; }
+
+.wv-fixed { position: fixed; }
+
+.wv-bg-fixed {
+    background-attachment: fixed;
+}
+
+.ed-slider-items,
+.ed-slider-item {
+    backface-visibility: hidden;
+}
+
+// clearfix gallery stuff Oo!?!
+.cf:before,
+.cf:after {
+    content: "";
+    display: table;
+}
+
+.cf:after {
+    clear: both;
+}
+
+.ed-menu ul { align-items: center; }
+
+.ed-image {
+	> span {
+		display: block;
+	}
+}
+
+// Let Internet Explorer Support images inside flexbox with max-width
+.ed-container > .inner {
+	@media (-ms-high-contrast: none), (-ms-high-contrast: active) {
+		min-height:1px;
+	}
+}
+
+// slider fix
+.ed-container {
+	max-width: 100%;
+}
+
+.ed-container > a.inner {
+	&:hover,
+	&:focus,
+	&:active,
+	&.active {
+		text-decoration: unset;
+		color: unset;
+	}
+}
+
+.wv-overflow_hidden { &, > .inner { overflow: clip; } }
+.wv-overflow_visible { &, > .inner { overflow: visible; } }
+.wv-overflow_horizontal { &, > .inner { overflow-y: hidden; overflow-x: auto; } }
+.wv-overflow_vertical { &, > .inner { overflow-y: auto; overflow-x: hidden; } }
+.wv-overflow_auto { &, > .inner { overflow: auto; } }
+
+.wv-content,
+.wv-spacer {
+	> .inner {
+		@include media-constructor(padding-top, $spacer-container-all);
+		@include media-constructor(padding-bottom, $spacer-container-all);
+	}
+}
+
+.wv-boxed {
+	> .inner {
+		@include container-boxed;
+	}
+}
+
+.wv-headline {
+	h1,
+	h2,
+	h3,
+	h4,
+	h5,
+	h6 {
+		margin-bottom: 0;
+	}
+	margin-bottom: ($spacer / 2);
+}
+
+.wv-dummy {
+	position: relative;
+	background: fuchsia;
+	color: white;
+
+	&:after {
+		position: absolute;
+		background: white;
+		color: fuchsia;
+		content: 'Auto-generated Dummy Content';
+		padding: 0.5rem;
+		border-radius: 0.25rem;
+		z-index: 1000;
+		left: 0.25rem;
+		top: 0.25rem;
+	}
+}
+
+.ed-gallery {
+	.ed-gallery-items {
+		display: flex;
+		align-content: stretch;
+		align-items: stretch;
+		flex-wrap: wrap;
+
+		list-style: none;
+		padding: 0;
+		margin: 0;
+
+		> .ed-gallery-thumb {
+			overflow: hidden;
+
+			> a {
+				> img {
+					min-width: 100%;
+					max-width: 100%;
+					width: auto;
+				}
+			}
+		}
+
+		&[data-columns='6'] > .ed-gallery-thumb {
+			width: percentage(1/6);
+
+			@media screen and (max-width: $breakpoint-xl) {
+				width: percentage(1/5);
+			}
+
+			@media screen and (max-width: $breakpoint-lg) {
+				width: percentage(1/4);
+			}
+
+			@media screen and (max-width: $breakpoint-md) {
+				width: percentage(1/3);
+			}
+
+			@media screen and (max-width: $breakpoint-sm) {
+				width: percentage(1/2);
+			}
+		}
+
+		&[data-columns='5'] > .ed-gallery-thumb {
+			width: percentage(1/5);
+
+			@media screen and (max-width: $breakpoint-lg) {
+				width: percentage(1/4);
+			}
+
+			@media screen and (max-width: $breakpoint-md) {
+				width: percentage(1/3);
+			}
+
+			@media screen and (max-width: $breakpoint-sm) {
+				width: percentage(1/2);
+			}
+		}
+
+		&[data-columns='4'] > .ed-gallery-thumb {
+			width: percentage(1/4);
+
+			@media screen and (max-width: $breakpoint-md) {
+				width: percentage(1/3);
+			}
+
+			@media screen and (max-width: $breakpoint-sm) {
+				width: percentage(1/2);
+			}
+		}
+
+		&[data-columns='3'] > .ed-gallery-thumb {
+			width: percentage(1/3);
+
+			@media screen and (max-width: $breakpoint-md) {
+				width: percentage(1/3);
+			}
+
+			@media screen and (max-width: $breakpoint-sm) {
+				width: percentage(1/2);
+			}
+		}
+	}
+}
+
+// slick slider lazyload alt tag fix
+.ed-slider img {
+	color: transparent;
+}
+
+.ed-form-container {
+	margin-bottom: $spacer;
+}
+
+.ed-text > blockquote {
+	padding: ($spacer * 3) 0 $spacer $spacer;
+	border-width: 0;
+	border-left-width: 3px;
+	border-style: solid;
+	font-style: italic;
+	color: inherit;
+}
+
+body.edit .ed-html .script-placeholder:before {
+	@include orange-badge("Script");
+}
+
+body.edit .badge:before {
+	@include orange-badge("Elfsight Widget");
+}
+
+.ed-form-textarea,
+.ed-form-phone,
+.ed-form-email,
+.ed-form-date,
+.ed-form-datetime,
+.ed-form-input,
+.ed-form-upload,
+.ed-form-number,
+.ed-form-select,
+.ed-form-checkbox,
+.ed-form-radio {
+	margin-bottom: $spacer;
+}
+
+.ed-form-input,
+.ed-form-email,
+.ed-form-phone,
+.ed-form-date,
+.ed-form-datetime,
+.ed-form-upload,
+.ed-form-button,
+.ed-form-textarea,
+.ed-form-number,
+.ed-form-select {
+	> input,
+	> button,
+	> textarea {
+		@if ($feature-shadows == true) {
+			box-shadow: inset 0 0 4px rgba(0, 0, 0, 0.35);
+		}
+
+		@if ($feature-rounded == true) {
+			border-radius: $border-radius;
+		}
+
+		border-color: inherit;
+	}
+}
+
+.ed-form-captcha {
+	display: flex;
+	justify-content: flex-start;
+	align-items: center;
+	margin-bottom: ($spacer / 2);
+
+	> .regenerate {
+		margin-left: $spacer;
+
+		> a {
+			font: normal normal normal 14px/1 FontAwesome;
+			font-size: 0;
+			text-rendering: auto;
+			-webkit-font-smoothing: antialiased;
+			display: inline-block;
+			text-decoration: none;
+
+			&:hover,
+			&:active {
+				text-decoration: none;
+			}
+
+			&::before {
+				font-size: 1.5rem;
+				content: '\f021';
+			}
+		}
+	}
+}
+
+.ed-map > .map-canvas {
+	min-height: 10px;
+}
+
+// Hide classes
+.hide-sm {
+	@media screen and (max-width: $breakpoint-sm-max) {
+			@include info-box($content:"Hidden (Mobile)", $disabled: true);
+			body:not(.edit) & { display: none; }
+	}
+}
+
+.hide-md {
+	@media screen and (min-width: $breakpoint-sm) and (max-width: $breakpoint-md-max) {
+		@include info-box($content:"Hidden (Tablet)", $disabled: true);
+		body:not(.edit) & { display: none; }
+	}
+}
+
+.hide-lg {
+	@media screen and (min-width: $breakpoint-md) {
+		@include info-box($content:"Hidden (Desktop)", $disabled: true);
+		body:not(.edit) & { display: none; }
+	}
+}
+
+.ed-element[data-start-at] {
+    @include info-box($content:"Scheduled", $disabled: true);
+
+    .preview & {
+        display: none;
+    }
+}
+
+.ed-element[data-expired] {
+    @include info-box($content:"Expired", $disabled: true);
+
+    .preview & {
+        display: none;
+    }
+}
+
+// Somehow we still need to support internet explorer in 2019, so we add @supports,
+// because IE cannot parse :not selector, so instead of ignoring it like a sane
+// browser would, it will just apply the CSS rules.
+@supports not (-ms-high-contrast: none) {
+	body:not(.edit):not(.preview) {
+		.animation-initial {
+			visibility: hidden;
+		}
+	}
+}
+
+// indentication
+@for $i from 1 through 9 {
+	.indent-#{$i} {
+		padding-left: ($i * $spacer);
+	}
+}
+
+.ed-video {
+	iframe, video {
+		max-width: 100%;
+		vertical-align: top;
+		position: relative;
+	}
+
+	&.wv-bg {
+		display: flex;
+		align-items: stretch;
+		align-content: stretch;
+		justify-content: stretch;
+		video {
+			object-fit: cover;
+			object-position: center;
+			width: 100%;
+			height: 100%;
+		}
+
+		// IE Fix because IE can't do object-fit
+		@media (-ms-high-contrast: none), (-ms-high-contrast: active) {
+			position: absolute;
+			top: 0;
+			left: 0;
+			right: 0;
+			bottom: 0;
+			display: block;
+
+			video {
+				display: block;
+				height: auto;
+				width: 100%;
+				min-height: 100%;
+				min-width: 100%;
+			}
+		}
+
+	}
+}
+
+.ed-audio audio {
+	display: block;
+	width: 100%;
+}
+
+.ed-iframe {
+	display: block;
+	iframe {
+		border: none;
+		outline: none;
+		max-width: 100%;
+		vertical-align: top;
+	}
+}
+
+.ed-youtube, .ed-vimeo {
+	$aspect-ratios: (
+			".ar16_10": 16/10,
+			".ar16_9": 16/9,
+			".ar4_3": 4/3,
+			".ar2_1": 2/1,
+			".ar1_1": 1/1
+	);
+
+	@each $class, $value in $aspect-ratios {
+		#{'&'}#{$class} {
+			padding-bottom: calc(#{1 / $value} * 100%);
+		}
+	}
+
+	&.ar16_10, &.ar16_9, &.ar4_3, &.ar2_1, &.ar1_1 {
+		position: relative;
+		// Due to ensuring aspect ratio by padding, we need to position the image absolutely
+		> .iframe-holder {
+			position: absolute;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			width: 100%;
+			height: 100%;
+
+			iframe { position: absolute; }
+
+			iframe,
+			.video-loader {
+				height: 100% !important;
+				width: 100% !important;
+				background-size: cover !important;
+				background-position: center !important;
+			}
+		}
+	}
+}
+$theme-colors: (
+    "primary": $color-primary,
+    "secondary": $color-secondary,
+    "default": $color-default,
+	"text": $text-color,
+    "background": $color-background,
+    "user-1": $color-user-1,
+    "user-2": $color-user-2,
+    "user-3": $color-user-3,
+    "user-4": $color-user-4,
+    "user-5": $color-user-5,
+	"transparent": $color-transparent
+);
+
+// CSS custom properties for runtime color + alpha support.
+// Stored as bare RGB channels so a single variable serves both solid and alpha
+// usage: rgb(var(--color-primary)) and rgba(var(--color-primary), 0.5).
+:root {
+	@each $color, $value in $theme-colors {
+		@if $value != none and $value != transparent and $value != rgba(0,0,0,.0) {
+			--color-#{$color}: #{red($value)}, #{green($value)}, #{blue($value)};
+		}
+	}
+}
+
+// Framework-like generator
+@each $color, $value in $theme-colors {
+	.bg-#{$color} { background: $value !important; }
+	.color-#{$color} { color: $value !important; }
+	.fill-#{$color} { fill: $value !important; }
+	.stroke-#{$color} { stroke: $value !important; }
+	.bg-active-#{$color} {
+		&:hover,&.active {
+			background: $value !important;
+		}
+	}
+	.color-active-#{$color} {
+		&:hover, &.active {
+			color: $value !important;
+		}
+	}
+	.border-color-#{$color} {
+		border-color: $value !important;
+	}
+	.border-color-active-#{$color} {
+		&:hover, &.active {
+			border-color: $value !important;
+		}
+	}
+}
+
+.ed-form-button > button:not(.button) {
+    @extend .button;
+    @include button-variant($background: $color-primary);
+	border: none;
+}
+
+// Override default style
+button {
+	padding: 0;
+	border: none;
+	background: none;
+}
+
+// Base Button styles
+.button,
+.ed-element.ed-menu.wv-custom a.button,
+.ed-element.ed-menu.wv-custom button a.button {
+	padding: $button-padding-vertical $button-padding-horizontal;
+	display: inline-block;
+	font-family: $ff-buttons;
+	letter-spacing: $ls-buttons;
+	font-weight: $fw-buttons;
+	text-transform: $tt-buttons;
+	font-style: $fs-buttons;
+	border-width: $button-border-width;
+	border-style: $button-border-style;
+	border-radius: $button-border-radius;
+	max-width: 100%;
+	box-shadow: $button-box-shadow;
+	transform: $button-transform;
+
+    @if $feature-rounded == true {
+        border-radius: $border-radius;
+    }
+
+    @if $feature-transitions == true {
+        transition: $button-transition-base;
+
+			.fr-wrapper & {
+				transition-property: background, border-color, color;
+			}
+    }
+
+	@include button-variant($button-background, $button-background-active, $button-color, $button-color-active, $button-border-color, $button-border-color-active);
+	
+	&:hover,
+	&.active {
+		box-shadow: $button-box-shadow-active;
+		transform: $button-transform-active;
+	}
+	// reset
+	&,
+	&:hover,
+	&.active {
+		text-decoration: none;
+	}
+
+  	@include button-size(
+  		$padding-x: $button-padding-horizontal,
+  		$padding-y: $button-padding-vertical,
+  		$font-size: $fz-buttons-all,
+  		$line-height: $lh-buttons
+  	);
+
+  	&-small {
+        font-family: $ff-button-sm;
+        letter-spacing: $ls-button-sm;
+        font-weight: $fw-button-sm;
+        text-transform: $tt-button-sm;
+        font-style: $fs-button-sm;
+  		@include button-size(
+  			$padding-x: $button-padding-horizontal-sm,
+  			$padding-y: $button-padding-vertical-sm,
+  			$font-size: $fz-buttons-sm-all,
+  			$line-height: $lh-button-sm
+  		);
+  	}
+  	&-large {
+        font-family: $ff-button-lg;
+        letter-spacing: $ls-button-lg;
+        font-weight: $fw-button-lg;
+        text-transform: $tt-button-lg;
+        font-style: $fs-button-lg;
+  		@include button-size(
+  			$padding-x: $button-padding-horizontal-lg,
+  			$padding-y: $button-padding-vertical-lg,
+  			$font-size: $fz-buttons-lg-all,
+  			$line-height: $lh-button-lg
+  		);
+  	}
+  	&-xlarge {
+        font-family: $ff-button-xlg;
+        letter-spacing: $ls-button-xlg;
+        font-weight: $fw-button-xlg;
+        text-transform: $tt-button-xlg;
+        font-style: $fs-button-xlg;
+  		@include button-size(
+  			$padding-x: $button-padding-horizontal-xlg,
+  			$padding-y: $button-padding-vertical-xlg,
+  			$font-size: $fz-buttons-xlg-all,
+  			$line-height: $lh-button-xlg
+  		);
+  	}
+
+		&-variant-primary {
+			@if (
+				$primary-button-padding-horizontal != $button-padding-horizontal or 
+				$primary-button-padding-vertical != $button-padding-vertical
+			) {
+				padding: $primary-button-padding-horizontal $primary-button-padding-vertical;
+			}
+			@if $primary-ff-buttons != $ff-buttons {
+				font-family: $primary-ff-buttons;
+			}
+			@if $primary-ls-buttons != $ls-buttons {
+				letter-spacing: $primary-ls-buttons;
+			}
+			@if $primary-fw-buttons != $fw-buttons {
+				font-weight: $primary-fw-buttons;
+			}
+			@if $primary-tt-buttons != $tt-buttons {
+				text-transform: $primary-tt-buttons;
+			}
+			@if $primary-fs-buttons != $fs-buttons {
+				font-style: $primary-fs-buttons;
+			}
+			@if $primary-button-border-width != $button-border-width {
+				border-width: $primary-button-border-width;
+			}
+			@if $primary-button-border-style != $button-border-style {
+				border-style: $primary-button-border-style;
+			}
+			@if $primary-button-border-radius != $button-border-radius {
+				border-radius: $primary-button-border-radius;
+			}
+			@if $primary-button-box-shadow != $button-box-shadow {
+				box-shadow: $primary-button-box-shadow;
+			}
+			@if $primary-button-transform != $button-transform {
+				transform: $primary-button-transform;
+			}
+		
+			@if $feature-rounded==true {
+				border-radius: $border-radius;
+			}
+		
+			@if $feature-transitions==true and $primary-button-transition-base != $button-transition-base {
+				transition: $primary-button-transition-base;
+		
+				.fr-wrapper & {
+					transition-property: background, border-color, color;
+				}
+			}
+		
+			@if (
+				$primary-button-background != $button-background or
+				$primary-button-background-active != $button-background-active or
+				$primary-button-color != $button-color or
+				$primary-button-color-active != $button-color-active or
+				$primary-button-border-color != $button-border-color or
+				$primary-button-border-color-active != $button-border-color-active
+			) {
+				@include button-variant($primary-button-background, $primary-button-background-active, $primary-button-color, $primary-button-color-active, $primary-button-border-color, $primary-button-border-color-active);
+			}
+		
+			@if (
+				$primary-button-box-shadow-active != $button-box-shadow-active or 
+				$primary-button-transform-active != $button-transform-active
+			) {
+				&:hover,
+				&.active {
+					box-shadow: $primary-button-box-shadow-active;
+					transform: $primary-button-transform-active;
+				}
+			}
+			
+			@if (
+				$primary-button-padding-horizontal != $button-padding-horizontal or
+				$primary-button-padding-vertical != $button-padding-vertical or
+				$primary-fz-buttons-all != $fz-buttons-all or
+				$primary-lh-buttons != $lh-buttons
+			) {
+				@include button-size($padding-x: $primary-button-padding-horizontal,
+				$padding-y: $primary-button-padding-vertical,
+				$font-size: $primary-fz-buttons-all,
+				$line-height: $primary-lh-buttons);
+			}
+		
+			&.button-small {
+				@if $primary-ff-button-sm != $ff-button-sm {
+					font-family: $primary-ff-button-sm;
+				}
+				@if $primary-ls-button-sm != $ls-button-sm {
+					letter-spacing: $primary-ls-button-sm;
+				}
+				@if $primary-fw-button-sm != $fw-button-sm {
+					font-weight: $primary-fw-button-sm;
+				}
+				@if $primary-tt-button-sm != $tt-button-sm {
+					text-transform: $primary-tt-button-sm;
+				}
+				@if $primary-fs-button-sm != $fs-button-sm {
+					font-style: $primary-fs-button-sm;
+				}
+
+				@if (
+					$primary-button-padding-horizontal-sm != $button-padding-horizontal-sm or
+					$primary-button-padding-vertical-sm != $button-padding-vertical-sm or
+					$primary-fz-buttons-sm-all != $fz-buttons-sm-all or
+					$primary-lh-button-sm != $lh-button-sm
+				) {
+					@include button-size($padding-x: $primary-button-padding-horizontal-sm,
+					$padding-y: $primary-button-padding-vertical-sm,
+					$font-size: $primary-fz-buttons-sm-all,
+					$line-height: $primary-lh-button-sm);
+				}
+			}
+		
+			&.button-large {
+				@if $primary-ff-button-lg != $ff-button-lg {
+					font-family: $primary-ff-button-lg;
+				}
+				@if $primary-ls-button-lg != $ls-button-lg {
+					letter-spacing: $primary-ls-button-lg;
+				}
+				@if $primary-fw-button-lg != $fw-button-lg {
+					font-weight: $primary-fw-button-lg;
+				}
+				@if $primary-tt-button-lg != $tt-button-lg {
+					text-transform: $primary-tt-button-lg;
+				}
+				@if $primary-fs-button-lg != $fs-button-lg {
+					font-style: $primary-fs-button-lg;
+				}
+
+				@if (
+					$primary-button-padding-horizontal-lg != $button-padding-horizontal-lg or
+					$primary-button-padding-vertical-lg != $button-padding-vertical-lg or
+					$primary-fz-buttons-lg-all != $fz-buttons-lg-all or
+					$primary-lh-button-lg != $lh-button-lg
+				) {
+					@include button-size($padding-x: $primary-button-padding-horizontal-lg,
+						$padding-y: $primary-button-padding-vertical-lg,
+						$font-size: $primary-fz-buttons-lg-all,
+						$line-height: $primary-lh-button-lg);
+				}
+			}
+		
+			&.button-xlarge {
+				@if $primary-ff-button-xlg != $ff-button-xlg {
+					font-family: $primary-ff-button-xlg;
+				}
+				@if $primary-ls-button-xlg != $ls-button-xlg {
+					letter-spacing: $primary-ls-button-xlg;
+				}
+				@if $primary-fw-button-xlg != $fw-button-xlg {
+					font-weight: $primary-fw-button-xlg;
+				}
+				@if $primary-tt-button-xlg != $tt-button-xlg {
+					text-transform: $primary-tt-button-xlg;
+				}
+				@if $primary-fs-button-xlg != $fs-button-xlg {
+					font-style: $primary-fs-button-xlg;
+				}
+
+				@if (
+					$primary-button-padding-horizontal-xlg != $button-padding-horizontal-xlg or
+					$primary-button-padding-vertical-xlg != $button-padding-vertical-xlg or
+					$primary-fz-buttons-xlg-all != $fz-buttons-xlg-all or
+					$primary-lh-button-xlg != $lh-button-xlg
+				) {
+					@include button-size($padding-x: $primary-button-padding-horizontal-xlg,
+						$padding-y: $primary-button-padding-vertical-xlg,
+						$font-size: $primary-fz-buttons-xlg-all,
+						$line-height: $primary-lh-button-xlg);
+				}
+			}
+		}
+
+		&-variant-secondary {
+			@if(
+				$secondary-button-padding-horizontal != $button-padding-horizontal or 
+				$secondary-button-padding-vertical != $button-padding-vertical
+			) {
+				padding: $secondary-button-padding-horizontal $secondary-button-padding-vertical;
+			}
+			
+			@if $secondary-ff-buttons != $ff-buttons {
+				font-family: $secondary-ff-buttons;
+			}
+			@if $secondary-ls-buttons != $ls-buttons {
+				letter-spacing: $secondary-ls-buttons;
+			}
+			@if $secondary-fw-buttons != $fw-buttons {
+				font-weight: $secondary-fw-buttons;
+			}
+			@if $secondary-tt-buttons != $tt-buttons {
+				text-transform: $secondary-tt-buttons;
+			}
+			@if $secondary-fs-buttons != $fs-buttons {
+				font-style: $secondary-fs-buttons;
+			}
+			@if $secondary-button-border-width != $button-border-width {
+				border-width: $secondary-button-border-width;
+			}
+			@if $secondary-button-border-style != $button-border-style {
+				border-style: $secondary-button-border-style;
+			}
+			@if $secondary-button-border-radius != $button-border-radius {
+				border-radius: $secondary-button-border-radius;
+			}
+			@if $secondary-button-box-shadow != $button-box-shadow {
+				box-shadow: $secondary-button-box-shadow;
+			}
+			@if $secondary-button-transform != $button-transform {
+				transform: $secondary-button-transform;
+			}
+		
+			@if $feature-rounded==true {
+				border-radius: $border-radius;
+			}
+		
+			@if $feature-transitions==true and $secondary-button-transition-base != $button-transition-base {
+				transition: $secondary-button-transition-base;
+		
+				.fr-wrapper & {
+					transition-property: background, border-color, color;
+				}
+			}
+		
+			@if (
+				$secondary-button-background != $button-background or 
+				$secondary-button-background-active != $button-background-active or 
+				$secondary-button-color != $button-color or 
+				$secondary-button-color-active != $button-color-active or
+				$secondary-button-border-color != $button-border-color or 
+				$secondary-button-border-color-active != $button-border-color-active
+			) {
+				@include button-variant($secondary-button-background, $secondary-button-background-active, $secondary-button-color, $secondary-button-color-active, $secondary-button-border-color, $secondary-button-border-color-active);
+			}
+
+			@if (
+				$secondary-button-box-shadow-active != $button-box-shadow-active or
+				$secondary-button-transform-active != $button-transform-active
+			) {
+				&:hover,
+				&.active {
+					box-shadow: $secondary-button-box-shadow-active;
+					transform: $secondary-button-transform-active;
+				}
+			}
+		
+			@if (
+				$secondary-button-padding-horizontal != $button-padding-horizontal or 
+				$secondary-button-padding-vertical != $button-padding-vertical or 
+				$secondary-fz-buttons-all != $fz-buttons-all or
+				$secondary-lh-buttons != $lh-buttons
+			) {
+				@include button-size($padding-x: $secondary-button-padding-horizontal,
+					$padding-y: $secondary-button-padding-vertical,
+					$font-size: $secondary-fz-buttons-all,
+					$line-height: $secondary-lh-buttons);
+			}
+
+			&.button-small {
+				@if $secondary-ff-button-sm != $ff-button-sm {
+					font-family: $secondary-ff-button-sm;
+				}
+				@if $secondary-ls-button-sm != $ls-button-sm {
+					letter-spacing: $secondary-ls-button-sm;
+				}
+				@if $secondary-fw-button-sm != $fw-button-sm {
+					font-weight: $secondary-fw-button-sm;
+				}
+				@if $secondary-tt-button-sm != $tt-button-sm {
+					text-transform: $secondary-tt-button-sm;
+				}
+				@if $secondary-fs-button-sm != $fs-button-sm {
+					font-style: $secondary-fs-button-sm;
+				}
+
+				@if (
+					$secondary-button-padding-horizontal-sm != $button-padding-horizontal-sm or
+					$secondary-button-padding-vertical-sm != $button-padding-vertical-sm or
+					$secondary-fz-buttons-sm-all != $fz-buttons-sm-all or
+					$secondary-lh-button-sm != $lh-button-sm
+				) {
+					@include button-size($padding-x: $secondary-button-padding-horizontal-sm,
+						$padding-y: $secondary-button-padding-vertical-sm,
+						$font-size: $secondary-fz-buttons-sm-all,
+						$line-height: $secondary-lh-button-sm);
+				}
+			}
+		
+			&.button-large {
+				@if $secondary-ff-button-lg != $ff-button-lg {
+					font-family: $secondary-ff-button-lg;
+				}
+				@if $secondary-ls-button-lg != $ls-button-lg {
+					letter-spacing: $secondary-ls-button-lg;
+				}
+				@if $secondary-fw-button-lg != $fw-button-lg {
+					font-weight: $secondary-fw-button-lg;
+				}
+				@if $secondary-tt-button-lg != $tt-button-lg {
+					text-transform: $secondary-tt-button-lg;
+				}
+				@if $secondary-fs-button-lg != $fs-button-lg {
+					font-style: $secondary-fs-button-lg;
+				}
+
+				@if (
+					$secondary-button-padding-horizontal-lg != $button-padding-horizontal-lg or
+					$secondary-button-padding-vertical-lg != $button-padding-vertical-lg or
+					$secondary-fz-buttons-lg-all != $fz-buttons-lg-all or
+					$secondary-lh-button-lg != $lh-button-lg
+				) {
+					@include button-size($padding-x: $secondary-button-padding-horizontal-lg,
+						$padding-y: $secondary-button-padding-vertical-lg,
+						$font-size: $secondary-fz-buttons-lg-all,
+						$line-height: $secondary-lh-button-lg);
+				}
+			}
+		
+			&.button-xlarge {
+				@if $secondary-ff-button-xlg != $ff-button-xlg {
+					font-family: $secondary-ff-button-xlg;
+				}
+				@if $secondary-ls-button-xlg != $ls-button-xlg {
+					letter-spacing: $secondary-ls-button-xlg;
+				}
+				@if $secondary-fw-button-xlg != $fw-button-xlg {
+					font-weight: $secondary-fw-button-xlg;
+				}
+				@if $secondary-tt-button-xlg != $tt-button-xlg {
+					text-transform: $secondary-tt-button-xlg;
+				}
+				@if $secondary-fs-button-xlg != $fs-button-xlg {
+					font-style: $secondary-fs-button-xlg;
+				}
+
+				@if (
+					$secondary-button-padding-horizontal-xlg != $button-padding-horizontal-xlg or
+					$secondary-button-padding-vertical-xlg != $button-padding-vertical-xlg or
+					$secondary-fz-buttons-xlg-all != $fz-buttons-xlg-all or
+					$secondary-lh-button-xlg != $lh-button-xlg
+				) {
+					@include button-size($padding-x: $secondary-button-padding-horizontal-xlg,
+						$padding-y: $secondary-button-padding-vertical-xlg,
+						$font-size: $secondary-fz-buttons-xlg-all,
+						$line-height: $secondary-lh-button-xlg);
+				}
+			}
+		}
+		
+}
+
+.button {
+	@each $color, $value in $theme-colors {
+		&.bg-#{$color} {
+			@include button-variant($value, $button-background-active, $button-color, $button-color-active, $button-border-color, $button-border-color-active);
+		}
+	}
+}
+
+.legal {
+    a { word-break: break-all; }
+
+    p {
+        text-align: justify;
+    }
+
+    p,
+    ul {
+        margin-bottom: $spacer;
+    }
+
+    h2 {
+      margin-top: $spacer*2;
+    }
+
+    h3 {
+      margin-top: $spacer;
+    }
+
+   	@media screen and (max-width: $breakpoint-sm-max) {
+        h1 { font-size: max(to-rem(nth($fz-h1-all,1)) * 0.6, to-rem(nth($fz-base-all,1))); }
+        h2 { font-size: max(to-rem(nth($fz-h2-all,1)) * 0.6, to-rem(nth($fz-base-all,1))); }
+        h3 { font-size: max(to-rem(nth($fz-h3-all,1)) * 0.5, to-rem(nth($fz-base-all,1))); }
+	}
+}
+
+// default list icons
+.ed-text ul,
+.imprint ul,
+.legal ul {
+    @include list-custom-icon($color-primary, $spacer, FontAwesome, "\f0da");
+}
+
+// default block code styles
+pre {
+    background-color: $gray-lightest;
+    border: $border-width solid $gray-lighter;
+    padding: $spacer/2 $spacer;
+
+    @if ($feature-rounded == true) {
+        border-radius: $border-radius solid darken($gray-lighter, 9%);
+    }
+}
+
+.wv-link-content {
+    position: absolute;
+    top: 1rem;
+    left: 0;
+    transform: translateX(-100%);
+    transition: transform 0.3s;
+
+    &:focus {
+        transform: translateX(1rem);
+        z-index: 1000;
+    }
+
+    body.edit & {
+        visibility: hidden;
+    }
+}
+
+.flatpickr-theme-light,
+.flatpickr-theme-dark {
+    .flatpickr-months {
+        .flatpickr-next-month:hover svg,
+        .flatpickr-prev-month:hover svg {
+            fill: $color-primary;
+        }
+    }
+
+    span.flatpickr-day {
+        &.selected,
+        &.startRange,
+        &.endRange,
+        &.selected.inRange,
+        &.startRange.inRange,
+        &.endRange.inRange,
+        &.selected:focus,
+        &.startRange:focus,
+        &.endRange:focus,
+        &.selected:hover,
+        &.startRange:hover,
+        &.endRange:hover,
+        &.selected.prevMonthDay,
+        &.startRange.prevMonthDay,
+        &.endRange.prevMonthDay,
+        &.selected.nextMonthDay,
+        &.startRange.nextMonthDay,
+        &.endRange.nextMonthDay {
+            background: $color-primary;
+            border-color: $color-primary;
+        }
+    }
+}
+
+@if $store-enabled {
+	// Product - Wrapper
+	.ed-ecwid-products {
+		background: $store-product-background;
+		color: if(type-of($store-product-color) == color, $store-product-color, prioritize-color($text-color, $store-product-background)) !important;
+		padding: $store-product-padding;
+	
+		select,
+		a { color: if(type-of($store-product-color) == color, $store-product-color, prioritize-color($text-color, $store-product-background)) !important; }
+	
+		option: {
+			background: $store-product-background !important;
+			color: if(type-of($store-product-color) == color, $store-product-color, prioritize-color($text-color, $store-product-background)) !important;
+		}
+	}
+
+	// Product - Show/hide Categories
+	.grid__categories {
+		@if $store-product-categories == false { display: none !important; }
+		@else  { display: flex !important; }
+	}
+
+	// Product - Headline
+	.ec-page-title__featured-products {
+		@if $store-product-headline-show == true { display: block; }
+		@else  { display: none; }
+	
+		h1 {
+			font-family: $store-product-headline-ff !important;
+			color: $store-product-headline-color !important;
+			@include media-constructor(font-size, extend-constructor('', $store-product-headline-fz-all, ' !important'));
+			font-weight: $store-product-headline-fw;
+			text-transform: $store-product-headline-tt;
+		}
+	}
+
+	// Product - Title
+	.grid-product__title-inner {
+		font-family: $store-product-title-ff;
+		color: if(type-of($store-product-title-color) == color, $store-product-title-color, prioritize-color($text-color, $store-product-background)) !important;
+		@include media-constructor(font-size, extend-constructor('', $store-product-title-fz-all, ' !important'));
+		font-weight: $store-product-title-fw !important;
+	}
+
+	// Product - Price
+	.grid-product__price-amount {
+		font-family: $store-product-price-ff;
+		color: $store-product-price-color !important;
+		@include media-constructor(font-size, extend-constructor('', $store-product-price-fz-all, ' !important'));
+		font-weight: $store-product-price-fw !important;
+	}
+
+	// Product - Element Spacer
+	.ecwid-productBrowser { padding: 0 !important; }
+
+	// Category - Wrapper
+	.horizontal-menu {
+		background: $store-category-background !important;
+		padding: $store-category-padding !important;
+		border-color: $store-category-border-color !important;
+		border-width: $store-category-border-size !important;
+		border-style: $store-category-border-style !important;
+		border-radius: $store-category-border-radius !important;
+	}
+
+	// Category - Link
+	.horizontal-menu-item a {
+		background: $store-category-link-background !important;
+		color: if(type-of($store-category-link-color) == color, $store-category-link-color, prioritize-color($text-color, $store-category-background, 20%)) !important;
+		@include media-constructor(font-size, extend-constructor('',$store-category-link-fz-all,' !important'));
+		line-height: 1.1;
+		padding: $store-category-link-padding !important;
+		margin-right: $store-category-link-margin !important;
+		border-radius: $store-category-link-border-radius !important;
+		transition: $transition-base;
+	}
+
+	.horizontal-menu-item:last-child a { margin-right: 0 !important; }
+
+	// Category - Link hover
+	.horizontal-menu-item a:hover,
+	.horizontal-menu-item--active a,
+	.horizontal-menu-item--hover a {
+		background: $store-category-link-background-hover !important;
+		color: if(type-of($store-category-link-color-hover) == color, $store-category-link-color-hover, prioritize-color($text-color, $store-category-link-background-hover)) !important;
+	}
+
+	// Category - Sublink
+	.horizontal-menu-subParent {
+		.horizontal-menu-item a {
+			background: $store-category-sublink-background !important;
+			color: if(type-of($store-category-sublink-color) == color, $store-category-sublink-color, prioritize-color($text-color, $store-category-background, 20%)) !important;
+		}
+	
+		// Category - Sublink hover
+		.horizontal-menu-item a:hover,
+		.horizontal-menu-item--active a {
+			background: $store-category-sublink-background-hover !important;
+			color: if(type-of($store-category-sublink-color-hover) == color, $store-category-sublink-color-hover, prioritize-color($text-color, $store-category-sublink-background-hover)) !important;
+		}
+	}
+	
+	.ec-footer { padding-bottom: 0 !important; }
+
+	// Mini Card
+	.ec-minicart__counter { color: if(type-of($store-card-color) == color, $store-card-color, prioritize-color($text-color, $store-card-background, 20%)) !important; }
+	.ec-minicart__counter:after { background: $store-card-background !important; }
+
+	// Search
+	.ecwid-search-widget { max-width: 100% !important; }
+
+	// Search - Input
+	.ecwid-search-widget__input {
+		background: $store-search-background !important;
+		color: if(type-of($store-search-color) == color, $store-search-color, prioritize-color($text-color, $store-search-background)) !important;
+		border-color: $store-search-border-color !important;
+		border-width: $store-search-border-size !important;
+		border-style: $store-search-border-style !important;
+		border-radius: $store-search-border-radius !important;
+		box-shadow: none !important;
+		height: auto !important;
+		line-height: 1 !important;
+		padding: $store-search-padding !important;
+		padding-right: calc($store-search-padding + 22px) !important;
+	
+		&::placeholder { color: if(type-of($store-search-color) == color, $store-search-color, prioritize-color($text-color, $store-search-background)) !important; }
+	}
+
+	.ecwid-search-widget__btn span { padding-right: $store-search-padding !important; }
+	.ecwid-search-widget__btn path { fill: if(type-of($store-search-color) == color, $store-search-color, prioritize-color($text-color, $store-search-background)) !important; }
+}
